@@ -8,7 +8,6 @@ import BidItem from "./bid-item";
 import CompleteJobButton from "./complete-button";
 import ReviewForm from "./review-form";
 
-// Отключаем кеширование, чтобы отзывы появлялись сразу после отправки
 export const revalidate = 0;
 
 export default async function JobBidsPage({
@@ -19,10 +18,8 @@ export default async function JobBidsPage({
   const { id } = await params;
   const supabase = await createClient();
 
-  // 1. Получаем текущего пользователя
   const { data: { user } } = await supabase.auth.getUser();
 
-  // 2. Загружаем данные заказа, отклики и отзывы
   const { data: job, error } = await supabase
     .from("jobs")
     .select(`
@@ -53,10 +50,16 @@ export default async function JobBidsPage({
 
   if (error || !job) return notFound();
 
-  // Находим данные выбранного исполнителя среди всех откликов
-  const selectedAccountant = job.accountant_id 
+  // Находим данные выбранного исполнителя
+  const rawBid = job.accountant_id 
     ? job.bids?.find((b: any) => b.accountant_id === job.accountant_id)
     : null;
+
+  // ТРЮК ДЛЯ TYPESCRIPT: обрабатываем profiles как массив или объект
+  const selectedAccountant = rawBid ? {
+    ...rawBid,
+    profile: Array.isArray(rawBid.profiles) ? rawBid.profiles[0] : rawBid.profiles
+  } : null;
 
   return (
     <div className="max-w-4xl mx-auto py-10 px-4">
@@ -70,22 +73,11 @@ export default async function JobBidsPage({
       <div className="mb-8 space-y-2">
         <div className="flex items-center gap-3">
           <h1 className="text-3xl font-bold text-slate-900">{job.title}</h1>
-          <Badge 
-            variant="outline" 
-            className={
-              job.status === 'open' ? "border-green-500 text-green-600" : 
-              job.status === 'in_progress' ? "border-blue-500 text-blue-600" : 
-              "border-slate-400 text-slate-500"
-            }
-          >
+          <Badge variant="outline" className={job.status === 'open' ? "border-green-500 text-green-600" : job.status === 'in_progress' ? "border-blue-500 text-blue-600" : "border-slate-400 text-slate-500"}>
             {job.status === 'open' && 'Сбор откликов'}
             {job.status === 'in_progress' && 'В работе'}
             {job.status === 'completed' && 'Завершен'}
           </Badge>
-        </div>
-        <div className="flex items-center text-slate-400 text-sm">
-          <Clock className="mr-1 h-3 w-3" />
-          Создан {new Date(job.created_at).toLocaleDateString('ru-RU')}
         </div>
       </div>
 
@@ -95,30 +87,26 @@ export default async function JobBidsPage({
             <div className={`h-1.5 ${job.status === 'completed' ? 'bg-slate-400' : 'bg-blue-600'}`} />
             <CardHeader className="pb-2">
               <div className="flex items-center gap-2 font-bold text-slate-800">
-                {job.status === 'completed' ? (
-                  <ShieldCheck className="h-5 w-5 text-slate-500" />
-                ) : (
-                  <CheckCircle2 className="h-5 w-5 text-blue-600" />
-                )}
+                {job.status === 'completed' ? <ShieldCheck className="h-5 w-5 text-slate-500" /> : <CheckCircle2 className="h-5 w-5 text-blue-600" />}
                 {job.status === 'completed' ? 'Проект выполнен' : 'Исполнитель подтвержден'}
               </div>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="flex items-center gap-4 bg-white p-4 rounded-xl border border-slate-100 shadow-sm">
                 <div className={`h-12 w-12 rounded-full flex items-center justify-center text-white font-bold text-lg ${job.status === 'completed' ? 'bg-slate-400' : 'bg-blue-600'}`}>
-                  {selectedAccountant.profiles?.full_name?.[0]}
+                  {/* ИСПОЛЬЗУЕМ .profile вместо .profiles */}
+                  {selectedAccountant.profile?.full_name?.[0] || "?"}
                 </div>
                 <div>
-                  <p className="font-bold text-slate-900 text-lg">{selectedAccountant.profiles?.full_name}</p>
+                  <Link href={`/profile/${job.accountant_id}`} className="font-bold text-slate-900 text-lg hover:text-blue-600 transition-colors">
+                    {selectedAccountant.profile?.full_name}
+                  </Link>
                   <p className="text-sm text-slate-500">Назначенный специалист</p>
                 </div>
               </div>
               
-              <div className="bg-white/50 p-4 rounded-lg border border-slate-100">
-                <p className="text-sm font-semibold text-slate-500 mb-2 uppercase tracking-wider">Сопроводительное письмо:</p>
-                <p className="text-slate-700 italic text-sm leading-relaxed">
-                  &ldquo;{selectedAccountant.content}&rdquo;
-                </p>
+              <div className="bg-white/50 p-4 rounded-lg border border-slate-100 italic text-sm text-slate-700">
+                &ldquo;{selectedAccountant.content}&rdquo;
               </div>
 
               {job.status === 'in_progress' && (
@@ -127,12 +115,10 @@ export default async function JobBidsPage({
                 </div>
               )}
 
-              {/* СЕКЦИЯ ОТЗЫВА */}
               {job.status === 'completed' && (
                 <div className="mt-8 pt-8 border-t border-slate-200">
                   {job.reviews && job.reviews.length > 0 ? (
-                    <div className="bg-white p-6 rounded-xl border border-slate-100 shadow-sm">
-                      <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Ваш отзыв:</p>
+                    <div className="bg-white p-6 rounded-xl border border-slate-100">
                       <div className="flex gap-1 mb-2">
                         {[...Array(job.reviews[0].rating)].map((_, i) => (
                           <Star key={i} className="h-4 w-4 fill-yellow-400 text-yellow-400" />
@@ -141,45 +127,21 @@ export default async function JobBidsPage({
                       <p className="text-slate-700 italic">"{job.reviews[0].comment}"</p>
                     </div>
                   ) : (
-                    user && job.accountant_id && (
-                      <ReviewForm 
-                        jobId={job.id} 
-                        clientId={user.id} 
-                        accountantId={job.accountant_id} 
-                      />
-                    )
+                    user && <ReviewForm jobId={job.id} clientId={user.id} accountantId={job.accountant_id} />
                   )}
-                  <div className="mt-6 text-center text-slate-400 text-xs font-medium uppercase tracking-widest">
-                    Архивный проект
-                  </div>
                 </div>
               )}
             </CardContent>
           </Card>
         ) : (
+          /* Список откликов */
           <div className="space-y-4">
-            <h3 className="text-lg font-bold text-slate-800">
-              Доступные предложения ({job.bids?.length || 0})
-            </h3>
-            
-            {job.bids && job.bids.length > 0 ? (
-              <div className="grid gap-4">
-                {job.bids.map((bid: any) => (
-                  <BidItem 
-                    key={bid.id} 
-                    bid={bid} 
-                    jobId={job.id} 
-                  />
-                ))}
-              </div>
-            ) : (
-              <Card className="border-dashed py-16">
-                <CardContent className="flex flex-col items-center justify-center text-slate-400">
-                  <User className="h-12 w-12 mb-3 opacity-10" />
-                  <p className="font-medium">Ожидайте первых откликов от бухгалтеров</p>
-                </CardContent>
-              </Card>
-            )}
+            <h3 className="text-lg font-bold text-slate-800">Доступные предложения ({job.bids?.length || 0})</h3>
+            <div className="grid gap-4">
+              {job.bids?.map((bid: any) => (
+                <BidItem key={bid.id} bid={bid} jobId={job.id} />
+              ))}
+            </div>
           </div>
         )}
       </div>
