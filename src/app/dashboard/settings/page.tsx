@@ -6,7 +6,6 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import { toast } from "sonner" // Или используй обычный alert
 import { User, Briefcase, FileText, Loader2 } from "lucide-react"
 
 export default function SettingsPage() {
