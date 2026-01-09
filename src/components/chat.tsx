@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react'
 import { createClient } from '@/utils/supabase/client'
-import { Send, Loader2, MessageSquare } from 'lucide-react'
+import { Send, Loader2, MessageSquare, User } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 
@@ -69,51 +69,57 @@ export default function Chat({ jobId, userId }: { jobId: string, userId: string 
     if (!error) setNewMessage('')
   }
 
-  if (loading) return <div className="flex justify-center p-8"><Loader2 className="animate-spin text-blue-600" /></div>
+  if (loading) return (
+    <div className="flex justify-center items-center h-[400px]">
+      <Loader2 className="animate-spin text-blue-600 w-8 h-8" />
+    </div>
+  )
 
   return (
-    <div className="flex flex-col h-[600px] bg-[#e5ddd5] dark:bg-slate-900 border rounded-2xl overflow-hidden shadow-xl border-slate-300">
-      {/* Шапка чата */}
-      <div className="bg-[#075e54] p-3 flex items-center gap-3 text-white">
-        <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
-          <MessageSquare size={20} />
-        </div>
-        <div>
-          <div className="font-bold text-sm">Рабочий чат</div>
-          <div className="text-[11px] opacity-80">в сети</div>
+    <div className="flex flex-col h-[600px] bg-white border border-slate-200 rounded-3xl overflow-hidden shadow-2xl shadow-blue-100/50">
+      {/* Шапка чата — теперь в стиле приложения */}
+      <div className="bg-white border-b border-slate-100 p-4 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-blue-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-blue-200">
+            <MessageSquare size={20} />
+          </div>
+          <div>
+            <div className="font-bold text-slate-900 leading-tight">Обсуждение проекта</div>
+            <div className="flex items-center gap-1.5">
+              <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+              <span className="text-[11px] text-slate-400 font-medium uppercase tracking-wider">Чат активен</span>
+            </div>
+          </div>
         </div>
       </div>
       
-      {/* Лента сообщений */}
-      <div className="flex-1 overflow-y-auto p-3 space-y-1 bg-[#e5ddd5]">
+      {/* Лента сообщений — чистый фон */}
+      <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-[#f8fafc]">
         {messages.map((msg) => {
           const isMine = msg.sender_id === userId
           const time = new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 
           return (
-            <div key={msg.id} className={`flex ${isMine ? 'justify-end' : 'justify-start'} w-full`}>
-              <div className={`relative max-w-[85%] px-2 py-1 rounded-lg shadow-sm ${
-                isMine ? 'bg-[#dcf8c6]' : 'bg-white'
-              }`}>
+            <div key={msg.id} className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>
+              <div className={`flex flex-col max-w-[80%] ${isMine ? 'items-end' : 'items-start'}`}>
                 {/* Имя отправителя */}
                 {!isMine && (
-                  <div className="text-[12px] font-bold text-blue-600 px-0.5 leading-tight mb-0.5 truncate">
+                  <span className="text-[11px] font-bold text-slate-400 ml-2 mb-1 uppercase tracking-tighter">
                     {msg.profiles?.full_name || 'Собеседник'}
-                  </div>
+                  </span>
                 )}
                 
-                {/* Контент с плавающим временем */}
-                <div className="text-[15px] leading-[1.4] text-slate-900 px-0.5 overflow-hidden">
+                <div className={`px-4 py-3 rounded-2xl shadow-sm text-sm leading-relaxed ${
+                  isMine 
+                  ? 'bg-blue-600 text-white rounded-tr-none' 
+                  : 'bg-white text-slate-700 border border-slate-100 rounded-tl-none'
+                }`}>
                   {msg.content}
-                  
-                  {/* Блок времени, прижатый вправо */}
-                  <span className="float-right mt-2 ml-2 flex items-center gap-0.5 h-4 pointer-events-none">
-                    <span className={`text-[10px] ${isMine ? 'text-slate-500' : 'text-slate-400'}`}>
-                      {time}
-                    </span>
-                  </span>
-                  <div className="clear-both"></div>
                 </div>
+
+                <span className="text-[10px] text-slate-400 mt-1 px-1 font-medium">
+                  {time}
+                </span>
               </div>
             </div>
           )
@@ -121,19 +127,21 @@ export default function Chat({ jobId, userId }: { jobId: string, userId: string 
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Поле ввода */}
-      <form onSubmit={sendMessage} className="p-2 bg-[#f0f0f0] flex gap-2 items-center">
-        <Input 
-          value={newMessage}
-          onChange={(e) => setNewMessage(e.target.value)}
-          placeholder="Введите сообщение"
-          className="flex-1 bg-white border-none rounded-full py-5 px-4 text-sm focus-visible:ring-0 shadow-sm"
-        />
+      {/* Поле ввода — современный минимализм */}
+      <form onSubmit={sendMessage} className="p-4 bg-white border-t border-slate-100 flex gap-3 items-center">
+        <div className="flex-1 relative">
+          <Input 
+            value={newMessage}
+            onChange={(e) => setNewMessage(e.target.value)}
+            placeholder="Напишите сообщение..."
+            className="w-full bg-slate-50 border-none rounded-2xl py-6 px-5 text-sm focus-visible:ring-2 focus-visible:ring-blue-500/20 shadow-inner"
+          />
+        </div>
         <Button 
           type="submit" 
           disabled={!newMessage.trim()}
           size="icon" 
-          className="bg-[#075e54] hover:bg-[#054c44] h-11 w-11 rounded-full shrink-0 shadow-md transition-all active:scale-90"
+          className="bg-blue-600 hover:bg-blue-700 h-12 w-12 rounded-2xl shrink-0 shadow-lg shadow-blue-200 transition-all active:scale-95 disabled:opacity-50"
         >
           <Send className="h-5 w-5 text-white" />
         </Button>
