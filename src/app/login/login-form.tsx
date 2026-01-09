@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from "react"
+import { useState, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { createClient } from "@/utils/supabase/client"
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card"
@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 
-export default function LoginForm() {
+function LoginFormContent() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const supabase = createClient()
@@ -123,5 +123,29 @@ export default function LoginForm() {
         </form>
       </CardContent>
     </Card>
+  )
+}
+
+export default function LoginForm() {
+  return (
+    <Suspense fallback={
+      <Card className="w-full max-w-sm sm:max-w-md rounded-3xl shadow-xl border-slate-100">
+        <CardHeader className="space-y-1">
+          <CardTitle className="text-2xl text-center font-bold tracking-tight">ProfBuh</CardTitle>
+          <CardDescription className="text-center">
+            Загрузка...
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <div className="h-10 bg-slate-100 rounded-lg animate-pulse" />
+            <div className="h-10 bg-slate-100 rounded-lg animate-pulse" />
+            <div className="h-11 bg-slate-100 rounded-2xl animate-pulse" />
+          </div>
+        </CardContent>
+      </Card>
+    }>
+      <LoginFormContent />
+    </Suspense>
   )
 }
