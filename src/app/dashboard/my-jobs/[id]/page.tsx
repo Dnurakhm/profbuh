@@ -119,7 +119,7 @@ export default async function JobBidsPage({
 
                   <div className="lg:col-span-1">
                     {/* Вставляем наш новый компонент */}
-                    <Chat jobId={job.id} userId={user.id} />
+                    <Chat jobId={job.id} userId={user?.id || ""} /> 
                   </div>
                 </div><div className="pt-4 flex justify-end">
                     <CompleteJobButton jobId={job.id} />
