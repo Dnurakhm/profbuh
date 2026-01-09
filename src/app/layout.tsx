@@ -31,13 +31,15 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} ${geistSans.className} antialiased bg-slate-50 min-h-screen flex flex-col overflow-x-hidden`}
       >
         {/* Навигация */}
-        <Navbar /> 
-        
-        {/* Добавляем flex-1, чтобы main занимал всё пространство, 
-            и предотвращаем горизонтальный скролл через overflow-x-hidden 
-        */}
-        <main className="flex-1 w-full overflow-x-hidden">
-          {children}
+        <Navbar />
+
+        {/* Основной контейнер приложения.
+            На мобильных занимает весь экран, на больших экранах слегка центрируем,
+            добавляем отступ снизу под системные панели. */}
+        <main className="flex-1 w-full overflow-x-hidden pb-[env(safe-area-inset-bottom)]">
+          <div className="mx-auto w-full max-w-5xl px-4 sm:px-6 lg:px-8">
+            {children}
+          </div>
         </main>
 
         {/* Здесь в будущем можно добавить Footer */}

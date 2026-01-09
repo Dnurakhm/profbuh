@@ -25,28 +25,38 @@ export default async function DashboardPage() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto p-6 space-y-8">
-      <header className="flex justify-between items-center border-b pb-6">
-        <div>
-          <h1 className="text-3xl font-bold text-slate-900">Панель управления</h1>
-          <p className="text-slate-500">Добро пожаловать, {profile?.full_name || 'Пользователь'}</p>
+    <div className="py-6 space-y-6 sm:space-y-8">
+      <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b pb-4 sm:pb-6">
+        <div className="space-y-1">
+          <h1 className="text-2xl sm:text-3xl font-bold text-slate-900">Панель управления</h1>
+          <p className="text-sm sm:text-base text-slate-500">
+            Добро пожаловать, {profile?.full_name || 'Пользователь'}
+          </p>
         </div>
         
-        <div className="flex items-center gap-4">
+        <div className="flex items-center justify-between sm:justify-end gap-3 sm:gap-4">
           <form action={signOut}>
-            <Button variant="ghost" size="sm" className="text-slate-500 hover:text-red-600">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-slate-500 hover:text-red-600 rounded-full px-3 h-9"
+            >
               <LogOut className="mr-2 h-4 w-4" /> Выйти
             </Button>
           </form>
 
           {profile?.role === 'client' ? (
-            <Button asChild className="bg-blue-600">
+            <Button asChild className="bg-blue-600 rounded-2xl h-10 sm:h-11 px-4 text-sm sm:text-base">
               <Link href="/jobs/create">
                 <PlusCircle className="mr-2 h-4 w-4" /> Разместить заказ
               </Link>
             </Button>
           ) : (
-            <Button asChild variant="default" className="bg-slate-900">
+            <Button
+              asChild
+              variant="default"
+              className="bg-slate-900 rounded-2xl h-10 sm:h-11 px-4 text-sm sm:text-base"
+            >
               <Link href="/jobs">
                 <Search className="mr-2 h-4 w-4" /> Найти работу
               </Link>
@@ -55,7 +65,7 @@ export default async function DashboardPage() {
         </div>
       </header>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-slate-500">Ваша роль</CardTitle>

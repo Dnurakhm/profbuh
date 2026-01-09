@@ -50,10 +50,10 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-50 p-4">
-      <Card className="w-full max-w-md">
+    <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center bg-slate-50 py-6">
+      <Card className="w-full max-w-sm sm:max-w-md rounded-3xl shadow-xl border-slate-100">
         <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl text-center font-bold">ProfBuh</CardTitle>
+          <CardTitle className="text-2xl text-center font-bold tracking-tight">ProfBuh</CardTitle>
           <CardDescription className="text-center">
             Войдите в систему или создайте новый аккаунт
           </CardDescription>
@@ -70,10 +70,10 @@ export default function LoginPage() {
             </div>
             
             <div className="grid grid-cols-2 gap-4 pt-2">
-              <Button formAction={signIn} className="bg-blue-600 hover:bg-blue-700">
+              <Button formAction={signIn} className="bg-blue-600 hover:bg-blue-700 h-11 rounded-2xl text-sm font-semibold">
                 Войти
               </Button>
-              <Button formAction={signUp} variant="outline">
+              <Button formAction={signUp} variant="outline" className="h-11 rounded-2xl text-sm font-semibold">
                 Регистрация
               </Button>
             </div>

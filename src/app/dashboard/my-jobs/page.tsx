@@ -25,15 +25,18 @@ export default async function MyJobsPage() {
   if (error) return <div className="p-10 text-red-500">Ошибка: {error.message}</div>;
 
   return (
-    <div className="max-w-5xl mx-auto py-10 px-4">
-      <div className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold">Мои заказы</h1>
-        <Button asChild className="bg-blue-600">
+    <div className="py-6 sm:py-8">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4 mb-6 sm:mb-8">
+        <h1 className="text-2xl sm:text-3xl font-bold">Мои заказы</h1>
+        <Button
+          asChild
+          className="bg-blue-600 rounded-2xl h-10 sm:h-11 px-4 text-sm sm:text-base w-full sm:w-auto"
+        >
           <Link href="/jobs/create">Создать новый</Link>
         </Button>
       </div>
       
-      <div className="grid gap-4">
+      <div className="grid gap-4 pb-8">
         {jobs?.length === 0 ? (
           <Card className="p-10 text-center border-dashed">
             <p className="text-slate-500">Вы еще не опубликовали ни одного заказа.</p>

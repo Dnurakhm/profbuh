@@ -74,21 +74,77 @@ export default function Navbar() {
 
         setProfile(data)
 
+      } else {
+
+        setProfile(null)
+
       }
 
     }
 
+    // Загружаем данные сразу
     getData()
+
+    // Подписываемся на изменения auth состояния
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+
+      async (event, session) => {
+
+        if (event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'TOKEN_REFRESHED') {
+
+          await getData()
+
+        }
+
+      }
+
+    )
+
+    // Очищаем подписку при размонтировании
+    return () => {
+
+      subscription.unsubscribe()
+
+    }
 
   }, [])
 
 
 
-  const handleLogout = async () => {
+  const handleLogout = async (e?: React.MouseEvent) => {
 
-    await supabase.auth.signOut()
+    e?.preventDefault()
 
-    window.location.href = '/login'
+    e?.stopPropagation()
+
+    try {
+
+      const { error } = await supabase.auth.signOut()
+
+      if (error) {
+
+        console.error('Ошибка при выходе:', error)
+
+        alert('Ошибка при выходе: ' + error.message)
+
+        return
+
+      }
+
+      // Небольшая задержка перед редиректом, чтобы подписка успела обработать SIGNED_OUT
+      setTimeout(() => {
+
+        window.location.href = '/login'
+
+      }, 100)
+
+    } catch (err) {
+
+      console.error('Неожиданная ошибка при выходе:', err)
+
+      alert('Произошла ошибка при выходе')
+
+    }
 
   }
 
@@ -232,6 +288,8 @@ export default function Navbar() {
 
                 <Button
 
+                  type="button"
+
                   variant="ghost"
 
                   size="icon"
@@ -331,6 +389,8 @@ export default function Navbar() {
           {user ? (
 
             <button
+
+              type="button"
 
               onClick={handleLogout}
 
