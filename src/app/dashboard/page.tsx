@@ -20,7 +20,13 @@ export default async function DashboardPage() {
   async function signOut() {
     "use server";
     const supabase = await createClient();
-    await supabase.auth.signOut();
+    const { error } = await supabase.auth.signOut();
+    
+    if (error) {
+      console.error('Ошибка при выходе:', error);
+    }
+    
+    // Всегда редиректим на login, даже если была ошибка
     redirect("/login");
   }
 

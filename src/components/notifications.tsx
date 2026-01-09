@@ -31,7 +31,7 @@ export default function Notifications({ userId }: { userId: string }) {
     .on(
       'postgres_changes',
       {
-        event: 'INSERT', // Слушаем только новые уведомления
+        event: 'INSERT', // Слушаем новые уведомления
         schema: 'public',
         table: 'notifications',
         filter: `user_id=eq.${userId}`,
@@ -39,6 +39,20 @@ export default function Notifications({ userId }: { userId: string }) {
       (payload) => {
         console.log('REALTIME: Новое уведомление!', payload);
         // Не инкрементируем вручную, а переспрашиваем базу для точности
+        fetchCount();
+      }
+    )
+    .on(
+      'postgres_changes',
+      {
+        event: 'UPDATE', // Слушаем обновления уведомлений (для группировки сообщений)
+        schema: 'public',
+        table: 'notifications',
+        filter: `user_id=eq.${userId}`,
+      },
+      (payload) => {
+        console.log('REALTIME: Уведомление обновлено!', payload);
+        // Переспрашиваем базу для точности
         fetchCount();
       }
     )

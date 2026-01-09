@@ -16,9 +16,26 @@ export default function NotificationsPage() {
     switch (type) {
       case 'chat_message': return <MessageSquare size={20} className={className} />
       case 'new_bid': return <UserPlus size={20} className={className} />
-      case 'job_accepted': return <CheckCircle size={20} className={className} />
+      case 'job_assigned': return <CheckCircle size={20} className={className} />
       default: return <Bell size={20} className={className} />
     }
+  }
+
+  // Функция для пометки уведомления как прочитанного
+  const markAsRead = async (notificationId: string, link: string) => {
+    // Помечаем как прочитанное в базе
+    await supabase
+      .from('notifications')
+      .update({ is_read: true })
+      .eq('id', notificationId)
+    
+    // Обновляем локальное состояние
+    setNotifications(prev => 
+      prev.map(n => n.id === notificationId ? { ...n, is_read: true } : n)
+    )
+    
+    // Переходим по ссылке
+    window.location.href = link
   }
 
   useEffect(() => {
@@ -35,26 +52,56 @@ export default function NotificationsPage() {
 
       if (data) setNotifications(data)
       setLoading(false)
-
-      // 2. Если есть непрочитанные, помечаем их прочитанными в базе через небольшую паузу
-      // Это нужно, чтобы пользователь успел увидеть "жирный" шрифт перед тем как он обновится
-      const unreadIds = data?.filter(n => !n.is_read).map(n => n.id)
-      
-      if (unreadIds && unreadIds.length > 0) {
-        // Пауза 1.5 сек, чтобы глаз зафиксировал новые сообщения
-        setTimeout(async () => {
-          await supabase
-            .from('notifications')
-            .update({ is_read: true })
-            .in('id', unreadIds)
-          
-          // Обновляем локальное состояние, чтобы визуально "потушить" уведомления
-          setNotifications(prev => prev.map(n => ({ ...n, is_read: true })))
-        }, 1500)
-      }
     }
 
     initNotifications()
+
+    // Подписка на изменения уведомлений в реальном времени
+    let channel: any = null
+    
+    const setupRealtime = async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+
+      channel = supabase
+        .channel(`notifications-page-${user.id}`)
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'notifications',
+            filter: `user_id=eq.${user.id}`,
+          },
+          () => {
+            // Перезагружаем уведомления при добавлении нового
+            initNotifications()
+          }
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'notifications',
+            filter: `user_id=eq.${user.id}`,
+          },
+          () => {
+            // Перезагружаем уведомления при обновлении (группировка сообщений)
+            initNotifications()
+          }
+        )
+        .subscribe()
+    }
+
+    setupRealtime()
+
+    // Cleanup функция
+    return () => {
+      if (channel) {
+        supabase.removeChannel(channel)
+      }
+    }
   }, [supabase])
 
   if (loading) return (
@@ -84,10 +131,10 @@ export default function NotificationsPage() {
           </div>
         ) : (
           notifications.map((n) => (
-            <Link 
-              key={n.id} 
-              href={n.link || '#'}
-              className={`group block relative p-5 rounded-3xl border transition-all duration-500 ${
+            <div
+              key={n.id}
+              onClick={() => markAsRead(n.id, n.link || '#')}
+              className={`group block relative p-5 rounded-3xl border transition-all duration-500 cursor-pointer ${
                 n.is_read 
                   ? 'bg-white border-slate-100 opacity-60' 
                   : 'bg-white border-blue-200 shadow-xl shadow-blue-50 ring-1 ring-blue-100' 
@@ -112,6 +159,11 @@ export default function NotificationsPage() {
                       n.is_read ? 'text-slate-600 font-bold' : 'text-slate-900 font-black text-xl tracking-tight'
                     }`}>
                       {n.title}
+                      {n.notification_count > 1 && (
+                        <span className="ml-2 text-sm text-blue-600 font-bold">
+                          ({n.notification_count})
+                        </span>
+                      )}
                     </h3>
                     <div className="flex items-center gap-1 text-[11px] font-bold text-slate-400 bg-slate-50 px-2 py-1 rounded-lg">
                       <Clock size={12} />
@@ -130,7 +182,7 @@ export default function NotificationsPage() {
                   <ChevronRight size={24} />
                 </div>
               </div>
-            </Link>
+            </div>
           ))
         )}
       </div>

@@ -1,8 +1,12 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { CheckCircle, Users, ShieldCheck, ArrowRight } from "lucide-react";
+import { createClient } from "@/utils/supabase/server";
 
-export default function Home() {
+export default async function Home() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  
   return (
     <div className="flex flex-col min-h-[calc(100vh-4rem)]">
       {/* Hero Section */}
@@ -26,21 +30,43 @@ export default function Home() {
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4">
-            <Button
-              asChild
-              size="lg"
-              className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 h-12 sm:h-14 px-6 sm:px-8 text-base sm:text-lg font-bold shadow-lg shadow-blue-200 rounded-2xl"
-            >
-              <Link href="/dashboard/my-jobs/new">Разместить заказ</Link>
-            </Button>
-            <Button
-              asChild
-              variant="outline"
-              size="lg"
-              className="w-full sm:w-auto h-12 sm:h-14 px-6 sm:px-8 text-base sm:text-lg font-semibold border-slate-200 hover:bg-slate-50 rounded-2xl"
-            >
-              <Link href="/jobs">Найти работу</Link>
-            </Button>
+            {user ? (
+              <>
+                <Button
+                  asChild
+                  size="lg"
+                  className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 h-12 sm:h-14 px-6 sm:px-8 text-base sm:text-lg font-bold shadow-lg shadow-blue-200 rounded-2xl"
+                >
+                  <Link href="/dashboard">Перейти в панель</Link>
+                </Button>
+                <Button
+                  asChild
+                  variant="outline"
+                  size="lg"
+                  className="w-full sm:w-auto h-12 sm:h-14 px-6 sm:px-8 text-base sm:text-lg font-semibold border-slate-200 hover:bg-slate-50 rounded-2xl"
+                >
+                  <Link href="/jobs">Найти работу</Link>
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button
+                  asChild
+                  size="lg"
+                  className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 h-12 sm:h-14 px-6 sm:px-8 text-base sm:text-lg font-bold shadow-lg shadow-blue-200 rounded-2xl"
+                >
+                  <Link href="/login">Начать работу</Link>
+                </Button>
+                <Button
+                  asChild
+                  variant="outline"
+                  size="lg"
+                  className="w-full sm:w-auto h-12 sm:h-14 px-6 sm:px-8 text-base sm:text-lg font-semibold border-slate-200 hover:bg-slate-50 rounded-2xl"
+                >
+                  <Link href="/jobs">Посмотреть заказы</Link>
+                </Button>
+              </>
+            )}
           </div>
         </div>
       </section>

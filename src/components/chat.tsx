@@ -66,7 +66,12 @@ export default function Chat({ jobId, userId }: { jobId: string, userId: string 
         content: newMessage.trim()
       })
 
-    if (!error) setNewMessage('')
+    if (error) {
+      console.error('Ошибка при отправке сообщения:', error)
+      alert('Не удалось отправить сообщение: ' + error.message)
+    } else {
+      setNewMessage('')
+    }
   }
 
   if (loading) return (

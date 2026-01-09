@@ -24,8 +24,6 @@ import {
 
   PlusCircle,
 
-  LogOut,
-
   UserCircle,
 
 } from 'lucide-react'
@@ -51,35 +49,39 @@ export default function Navbar() {
 
 
   useEffect(() => {
-
     setMounted(true)
 
     const getData = async () => {
+      try {
+        // Сначала получаем сессию, чтобы убедиться, что cookies загружены
+        const { data: { session } } = await supabase.auth.getSession()
+        const user = session?.user || null
+        
+        console.log('Session loaded:', session?.user?.id)
+        setUser(user)
 
-      const { data: { user } } = await supabase.auth.getUser()
+        if (user) {
+          const { data, error: profileError } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', user.id)
+            .single()
 
-      setUser(user)
-
-      if (user) {
-
-        const { data } = await supabase
-
-          .from('profiles')
-
-          .select('*')
-
-          .eq('id', user.id)
-
-          .single()
-
-        setProfile(data)
-
-      } else {
-
+          if (profileError) {
+            console.error('Error loading profile:', profileError)
+            setProfile(null)
+          } else {
+            console.log('Profile loaded:', data?.role)
+            setProfile(data)
+          }
+        } else {
+          setProfile(null)
+        }
+      } catch (error) {
+        console.error('Error in getData:', error)
+        setUser(null)
         setProfile(null)
-
       }
-
     }
 
     // Загружаем данные сразу
@@ -87,106 +89,89 @@ export default function Navbar() {
 
     // Подписываемся на изменения auth состояния
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-
       async (event, session) => {
-
-        if (event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'TOKEN_REFRESHED') {
-
-          await getData()
-
+        console.log('Auth state changed:', event, session?.user?.id)
+        const user = session?.user || null
+        setUser(user)
+        
+        if (user) {
+          const { data } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', user.id)
+            .single()
+          setProfile(data)
+        } else {
+          setProfile(null)
         }
-
       }
-
     )
 
     // Очищаем подписку при размонтировании
     return () => {
-
       subscription.unsubscribe()
-
     }
-
   }, [])
 
 
 
-  const handleLogout = async (e?: React.MouseEvent) => {
-
-    e?.preventDefault()
-
-    e?.stopPropagation()
-
-    try {
-
-      const { error } = await supabase.auth.signOut()
-
-      if (error) {
-
-        console.error('Ошибка при выходе:', error)
-
-        alert('Ошибка при выходе: ' + error.message)
-
-        return
-
-      }
-
-      // Небольшая задержка перед редиректом, чтобы подписка успела обработать SIGNED_OUT
-      setTimeout(() => {
-
-        window.location.href = '/login'
-
-      }, 100)
-
-    } catch (err) {
-
-      console.error('Неожиданная ошибка при выходе:', err)
-
-      alert('Произошла ошибка при выходе')
-
-    }
-
-  }
 
 
 
   const getLinks = () => {
+    // Если пользователь не авторизован - нет ссылок
+    if (!user) return []
 
+    // Если пользователь авторизован, но профиль еще не загружен - показываем базовые ссылки
+    if (user && !profile) {
+      return [
+        { name: 'Панель', href: '/dashboard', icon: LayoutDashboard },
+        { name: 'Профиль', href: `/profile/${user.id}`, icon: UserCircle },
+      ]
+    }
+
+    // Если профиль загружен - показываем ссылки в зависимости от роли
     if (!profile) return []
 
     if (profile.role === 'accountant') {
-
       return [
-
         { name: 'Лента заказов', href: '/jobs', icon: Briefcase },
-
         { name: 'Моя работа', href: '/dashboard/my-work', icon: LayoutDashboard },
-
         { name: 'Профиль', href: `/profile/${user?.id}`, icon: UserCircle },
-
         { name: 'Настройки', href: '/dashboard/settings', icon: PlusCircle },
-
       ]
-
     }
 
     return [
-
       { name: 'Мои заказы', href: '/dashboard/my-jobs', icon: LayoutDashboard },
-
       { name: 'Создать заказ', href: '/dashboard/my-jobs/new', icon: PlusCircle },
-
+      { name: 'Профиль', href: `/profile/${user?.id}`, icon: UserCircle },
     ]
-
   }
-
-
 
   const links = getLinks()
 
 
 
-  if (!mounted) return <nav className="h-16 bg-white border-b border-slate-100" />
+  // Показываем минимальный navbar во время загрузки
+  if (!mounted) {
+    return (
+      <nav className="h-16 bg-white border-b border-slate-100">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between h-16 items-center">
+            <Link href="/" className="flex-shrink-0 flex items-center gap-2">
+              <div className="w-9 h-9 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-200">
+                <span className="text-white font-black text-xl italic">B</span>
+              </div>
+              <span className="font-bold text-xl tracking-tight text-slate-900">
+                Buh<span className="text-blue-600">App</span>
+              </span>
+            </Link>
+          </div>
+        </div>
+      </nav>
+    )
+  }
 
 
 
@@ -228,92 +213,73 @@ export default function Navbar() {
 
           <div className="hidden md:flex items-center space-x-1">
 
-            {user && links.map((link) => (
-
+            {user && links.length > 0 ? links.map((link) => (
               <Link
-
                 key={link.href}
-
                 href={link.href}
-
                 className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all ${
-
                   pathname === link.href
-
                     ? 'text-blue-600 bg-blue-50'
-
                     : 'text-slate-600 hover:text-blue-600 hover:bg-slate-50'
-
                 }`}
-
               >
-
                 <link.icon className="w-4 h-4" />
-
                 {link.name}
-
               </Link>
+            )) : user && (
+              // Показываем хотя бы базовые ссылки, если пользователь авторизован
+              <>
+                <Link
+                  href="/dashboard"
+                  className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all text-slate-600 hover:text-blue-600 hover:bg-slate-50"
+                >
+                  <LayoutDashboard className="w-4 h-4" />
+                  Панель
+                </Link>
+                {user.id && (
+                  <Link
+                    href={`/profile/${user.id}`}
+                    className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all text-slate-600 hover:text-blue-600 hover:bg-slate-50"
+                  >
+                    <UserCircle className="w-4 h-4" />
+                    Профиль
+                  </Link>
+                )}
+              </>
+            )}
 
-            ))}
-
-           
-
-            {user ? (
-
+            {user && user.id && (
               <div className="flex items-center gap-2 ml-4 pl-4 border-l border-slate-100">
-
                 {/* КОЛОКОЛЬЧИК УВЕДОМЛЕНИЙ */}
-
                 <Notifications userId={user.id} />
 
-               
+                {(profile?.full_name || profile?.role) && (
+                  <div className="flex flex-col items-end mr-2 ml-2">
+                    {profile?.role && (
+                      <span className="text-[10px] font-bold text-slate-400 uppercase leading-none mb-1">
+                        {profile.role === 'accountant' ? 'Бухгалтер' : 'Заказчик'}
+                      </span>
+                    )}
+                    {profile?.full_name && (
+                      <span className="text-sm font-bold text-slate-700 leading-none">
+                        {profile.full_name.split(' ')[0]}
+                      </span>
+                    )}
+                  </div>
+                )}
 
-                <div className="flex flex-col items-end mr-2 ml-2">
-
-                  <span className="text-[10px] font-bold text-slate-400 uppercase leading-none mb-1">
-
-                    {profile?.role === 'accountant' ? 'Бухгалтер' : 'Заказчик'}
-
-                  </span>
-
-                  <span className="text-sm font-bold text-slate-700 leading-none">
-
-                    {profile?.full_name?.split(' ')[0]}
-
-                  </span>
-
-                </div>
-
-               
-
-                <Button
-
-                  type="button"
-
-                  variant="ghost"
-
-                  size="icon"
-
-                  onClick={handleLogout}
-
-                  className="text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-full h-10 w-10"
-
-                >
-
-                  <LogOut className="w-5 h-5" />
-
-                </Button>
-
+                {/* Ссылка на профиль вместо кнопки выхода */}
+                <Link href={`/profile/${user.id}`}>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-full h-10 w-10"
+                  >
+                    <UserCircle className="w-5 h-5" />
+                  </Button>
+                </Link>
               </div>
-
-            ) : (
-
-              <Button asChild variant="default" className="bg-blue-600 hover:bg-blue-700 rounded-xl px-6 font-bold shadow-md shadow-blue-100">
-
-                <Link href="/login">Войти</Link>
-
-              </Button>
-
             )}
 
           </div>
@@ -326,7 +292,7 @@ export default function Navbar() {
 
             {/* Колокольчик в мобильной версии рядом с меню */}
 
-            {user && <Notifications userId={user.id} />}
+            {user && user.id && <Notifications userId={user.id} />}
 
             <button
 
@@ -354,72 +320,31 @@ export default function Navbar() {
 
         <div className="md:hidden bg-white border-b border-slate-100 p-4 space-y-2 animate-in slide-in-from-top duration-300">
 
-          {user && links.map((link) => (
-
+          {user && links.length > 0 && links.map((link) => (
             <Link
-
               key={link.href}
-
               href={link.href}
-
               onClick={() => setIsOpen(false)}
-
               className={`flex items-center gap-4 px-4 py-4 rounded-2xl text-base font-bold transition-all ${
-
                 pathname === link.href
-
                   ? 'text-blue-600 bg-blue-50'
-
                   : 'text-slate-600 bg-slate-50/50'
-
               }`}
-
             >
-
               <link.icon className="w-6 h-6" />
-
               {link.name}
-
             </Link>
-
           ))}
 
-         
-
-          {user ? (
-
-            <button
-
-              type="button"
-
-              onClick={handleLogout}
-
-              className="flex w-full items-center gap-4 px-4 py-4 rounded-2xl text-base font-bold text-red-500 bg-red-50/50 hover:bg-red-50 transition-all"
-
-            >
-
-              <LogOut className="w-6 h-6" />
-
-              Выйти из аккаунта
-
-            </button>
-
-          ) : (
-
+          {user && user.id && (
             <Link
-
-              href="/login"
-
+              href={`/profile/${user.id}`}
               onClick={() => setIsOpen(false)}
-
-              className="flex items-center justify-center w-full py-4 rounded-2xl bg-blue-600 text-white font-bold"
-
+              className="flex items-center gap-4 px-4 py-4 rounded-2xl text-base font-bold text-blue-600 bg-blue-50/50 hover:bg-blue-50 transition-all"
             >
-
-              Войти в BuhApp
-
+              <UserCircle className="w-6 h-6" />
+              Мой профиль
             </Link>
-
           )}
 
         </div>
