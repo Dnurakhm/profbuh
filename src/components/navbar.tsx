@@ -13,8 +13,8 @@ import {
   PlusCircle, 
   LogOut,
   UserCircle,
-  Star
 } from 'lucide-react'
+import Notifications from './notifications' // Импорт нашего нового компонента
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false)
@@ -46,19 +46,16 @@ export default function Navbar() {
     window.location.href = '/login'
   }
 
-  // Логика формирования ссылок
   const getLinks = () => {
     if (!profile) return []
-    
     if (profile.role === 'accountant') {
       return [
-    { name: 'Лента заказов', href: '/jobs', icon: Briefcase },
-    { name: 'Моя работа', href: '/dashboard/my-work', icon: LayoutDashboard },
-    { name: 'Профиль', href: `/profile/${user?.id}`, icon: UserCircle },
-    { name: 'Настройки', href: '/dashboard/settings', icon: PlusCircle }, // Добавь это
-  ]
+        { name: 'Лента заказов', href: '/jobs', icon: Briefcase },
+        { name: 'Моя работа', href: '/dashboard/my-work', icon: LayoutDashboard },
+        { name: 'Профиль', href: `/profile/${user?.id}`, icon: UserCircle },
+        { name: 'Настройки', href: '/dashboard/settings', icon: PlusCircle },
+      ]
     }
-    
     return [
       { name: 'Мои заказы', href: '/dashboard/my-jobs', icon: LayoutDashboard },
       { name: 'Создать заказ', href: '/dashboard/my-jobs/new', icon: PlusCircle },
@@ -67,7 +64,6 @@ export default function Navbar() {
 
   const links = getLinks()
 
-  // Предотвращаем гидратацию (чтобы не было мигания контента)
   if (!mounted) return <nav className="h-16 bg-white border-b border-slate-100" />
 
   return (
@@ -105,8 +101,11 @@ export default function Navbar() {
             ))}
             
             {user ? (
-              <div className="flex items-center gap-3 ml-4 pl-4 border-l border-slate-100">
-                <div className="flex flex-col items-end mr-2">
+              <div className="flex items-center gap-2 ml-4 pl-4 border-l border-slate-100">
+                {/* КОЛОКОЛЬЧИК УВЕДОМЛЕНИЙ */}
+                <Notifications userId={user.id} />
+                
+                <div className="flex flex-col items-end mr-2 ml-2">
                   <span className="text-[10px] font-bold text-slate-400 uppercase leading-none mb-1">
                     {profile?.role === 'accountant' ? 'Бухгалтер' : 'Заказчик'}
                   </span>
@@ -132,7 +131,9 @@ export default function Navbar() {
           </div>
 
           {/* Mobile menu button */}
-          <div className="md:hidden flex items-center">
+          <div className="md:hidden flex items-center gap-3">
+            {/* Колокольчик в мобильной версии рядом с меню */}
+            {user && <Notifications userId={user.id} />}
             <button
               onClick={() => setIsOpen(!isOpen)}
               className="p-2 rounded-xl text-slate-500 hover:bg-slate-100 transition-colors"

@@ -7,6 +7,7 @@ import Link from "next/link";
 import BidItem from "./bid-item";
 import CompleteJobButton from "./complete-button";
 import ReviewForm from "./review-form";
+import Chat from "@/components/chat";
 
 export const revalidate = 0;
 
@@ -110,9 +111,19 @@ export default async function JobBidsPage({
               </div>
 
               {job.status === 'in_progress' && (
-                <div className="pt-4 flex justify-end">
-                  <CompleteJobButton jobId={job.id} />
-                </div>
+                <><div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mt-8">
+                  <div className="lg:col-span-2 text-slate-600">
+                    {/* Тут основная инфо о заказе */}
+                    <p>Работа уже идет. Обсудите детали с исполнителем в чате.</p>
+                  </div>
+
+                  <div className="lg:col-span-1">
+                    {/* Вставляем наш новый компонент */}
+                    <Chat jobId={job.id} userId={user.id} />
+                  </div>
+                </div><div className="pt-4 flex justify-end">
+                    <CompleteJobButton jobId={job.id} />
+                  </div></>
               )}
 
               {job.status === 'completed' && (
