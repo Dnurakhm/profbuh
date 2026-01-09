@@ -39,26 +39,36 @@ export default function NotificationsPage() {
   }
 
   useEffect(() => {
-    const initNotifications = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
-
-      // 1. Сначала просто загружаем данные для отображения
-      const { data, error } = await supabase
-        .from('notifications')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-
-      if (data) setNotifications(data)
-      setLoading(false)
-    }
-
-    initNotifications()
-
-    // Подписка на изменения уведомлений в реальном времени
     let channel: any = null
     
+    const initNotifications = async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) {
+        setLoading(false)
+        return
+      }
+
+      try {
+        // Загружаем только последние 50 уведомлений для быстрой загрузки
+        const { data, error } = await supabase
+          .from('notifications')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false })
+          .limit(50)
+
+        if (error) {
+          console.error('Error loading notifications:', error)
+        } else if (data) {
+          setNotifications(data)
+        }
+      } catch (error) {
+        console.error('Error in initNotifications:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
     const setupRealtime = async () => {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
@@ -73,9 +83,9 @@ export default function NotificationsPage() {
             table: 'notifications',
             filter: `user_id=eq.${user.id}`,
           },
-          () => {
-            // Перезагружаем уведомления при добавлении нового
-            initNotifications()
+          (payload) => {
+            // Оптимистично добавляем новое уведомление без полной перезагрузки
+            setNotifications(prev => [payload.new as any, ...prev])
           }
         )
         .on(
@@ -86,14 +96,18 @@ export default function NotificationsPage() {
             table: 'notifications',
             filter: `user_id=eq.${user.id}`,
           },
-          () => {
-            // Перезагружаем уведомления при обновлении (группировка сообщений)
-            initNotifications()
+          (payload) => {
+            // Обновляем только измененное уведомление
+            setNotifications(prev => 
+              prev.map(n => n.id === payload.new.id ? { ...n, ...payload.new } : n)
+            )
           }
         )
         .subscribe()
     }
 
+    // Загружаем данные и настраиваем realtime параллельно
+    initNotifications()
     setupRealtime()
 
     // Cleanup функция
@@ -102,7 +116,7 @@ export default function NotificationsPage() {
         supabase.removeChannel(channel)
       }
     }
-  }, [supabase])
+  }, [])
 
   if (loading) return (
     <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">

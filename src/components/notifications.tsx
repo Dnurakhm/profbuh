@@ -12,60 +12,65 @@ export default function Notifications({ userId }: { userId: string }) {
 
   const fetchCount = useCallback(async () => {
     if (!userId) return
-    const { count } = await supabase
-      .from('notifications')
-      .select('*', { count: 'exact', head: true })
-      .eq('user_id', userId)
-      .eq('is_read', false)
-    setUnreadCount(count || 0)
-  }, [userId, supabase])
+    try {
+      const { count, error } = await supabase
+        .from('notifications')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', userId)
+        .eq('is_read', false)
+      
+      if (error) {
+        console.error('Error fetching notification count:', error)
+        return
+      }
+      
+      setUnreadCount(count || 0)
+    } catch (error) {
+      console.error('Error in fetchCount:', error)
+    }
+  }, [userId])
 
  useEffect(() => {
   if (!userId) return;
 
+  // Загружаем счетчик сразу
   fetchCount();
 
-  // Создаем канал с уникальным ID сессии, чтобы избежать кэширования
+  // Создаем канал с фиксированным именем для переиспользования
+  const channelName = `notifications-live-${userId}`
   const channel = supabase
-    .channel(`notifications-live-${userId}-${Math.random()}`) 
+    .channel(channelName) 
     .on(
       'postgres_changes',
       {
-        event: 'INSERT', // Слушаем новые уведомления
+        event: 'INSERT',
         schema: 'public',
         table: 'notifications',
         filter: `user_id=eq.${userId}`,
       },
-      (payload) => {
-        console.log('REALTIME: Новое уведомление!', payload);
-        // Не инкрементируем вручную, а переспрашиваем базу для точности
-        fetchCount();
+      () => {
+        // Используем debounce для избежания лишних запросов
+        setTimeout(() => fetchCount(), 100)
       }
     )
     .on(
       'postgres_changes',
       {
-        event: 'UPDATE', // Слушаем обновления уведомлений (для группировки сообщений)
+        event: 'UPDATE',
         schema: 'public',
         table: 'notifications',
         filter: `user_id=eq.${userId}`,
       },
-      (payload) => {
-        console.log('REALTIME: Уведомление обновлено!', payload);
-        // Переспрашиваем базу для точности
-        fetchCount();
+      () => {
+        setTimeout(() => fetchCount(), 100)
       }
     )
-    .subscribe(async (status) => {
-      if (status === 'SUBSCRIBED') {
-        console.log('REALTIME: Подписка активна');
-      }
-    });
+    .subscribe()
 
   return () => {
-    supabase.removeChannel(channel);
-  };
-}, [userId, fetchCount]);
+    supabase.removeChannel(channel)
+  }
+}, [userId, fetchCount])
 
   return (
     <div 

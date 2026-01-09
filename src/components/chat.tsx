@@ -18,16 +18,43 @@ export default function Chat({ jobId, userId }: { jobId: string, userId: string 
   }
 
   useEffect(() => {
+    // Кэш для профилей, чтобы не делать лишние запросы
+    const profileCache = new Map<string, any>()
+
     const fetchMessages = async () => {
-      const { data } = await supabase
-        .from('messages')
-        .select(`*, profiles:sender_id (full_name)`)
-        .eq('job_id', jobId)
-        .order('created_at', { ascending: true })
-      
-      if (data) setMessages(data)
-      setLoading(false)
-      setTimeout(scrollToBottom, 100)
+      try {
+        // Загружаем только последние 100 сообщений для быстрой загрузки
+        const { data, error } = await supabase
+          .from('messages')
+          .select(`*, profiles:sender_id (id, full_name)`)
+          .eq('job_id', jobId)
+          .order('created_at', { ascending: false })
+          .limit(100)
+        
+        if (error) {
+          console.error('Error loading messages:', error)
+          setLoading(false)
+          return
+        }
+
+        if (data) {
+          // Переворачиваем массив, так как загрузили в обратном порядке
+          const reversed = data.reverse()
+          setMessages(reversed)
+          
+          // Кэшируем профили
+          reversed.forEach((msg: any) => {
+            if (msg.profiles) {
+              profileCache.set(msg.sender_id, msg.profiles)
+            }
+          })
+        }
+      } catch (error) {
+        console.error('Error in fetchMessages:', error)
+      } finally {
+        setLoading(false)
+        setTimeout(scrollToBottom, 100)
+      }
     }
 
     fetchMessages()
@@ -40,18 +67,31 @@ export default function Chat({ jobId, userId }: { jobId: string, userId: string 
         table: 'messages',
         filter: `job_id=eq.${jobId}` 
       }, async (payload) => {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('full_name')
-          .eq('id', payload.new.sender_id)
-          .single()
+        // Проверяем кэш перед запросом
+        let profile = profileCache.get(payload.new.sender_id)
+        
+        if (!profile) {
+          const { data } = await supabase
+            .from('profiles')
+            .select('id, full_name')
+            .eq('id', payload.new.sender_id)
+            .single()
+          
+          if (data) {
+            profile = data
+            profileCache.set(payload.new.sender_id, profile)
+          }
+        }
         
         setMessages((prev) => [...prev, { ...payload.new, profiles: profile }])
         setTimeout(scrollToBottom, 50)
       })
       .subscribe()
 
-    return () => { supabase.removeChannel(channel) }
+    return () => { 
+      supabase.removeChannel(channel)
+      profileCache.clear()
+    }
   }, [jobId])
 
   const sendMessage = async (e: React.FormEvent) => {
