@@ -141,7 +141,7 @@ export default function Navbar() {
           <div className="flex items-center gap-2 sm:gap-4">
             {user ? (
               <>
-                {/* MODE TOGGLE - HIDDEN FOR NOW
+                {/* MODE TOGGLE - HIDDEN FOR NOW (Restore if role switching is needed)
                 <div onClick={toggleMode} className="cursor-pointer hidden md:flex items-center bg-slate-100 rounded-full p-1 border border-slate-200 relative w-[180px] h-9 select-none transition-all hover:border-blue-200">
                   <div
                     className={`absolute top-1 bottom-1 w-[calc(50%-4px)] bg-white rounded-full shadow-sm transition-all duration-300 ease-out ${mode === 'client' ? 'left-1' : 'left-[calc(50%)]'
