@@ -44,7 +44,7 @@ export default function Navbar() {
       }
     }
     getData()
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event: any, session: any) => {
       const user = session?.user || null
       setUser(user)
       if (user) {
@@ -120,8 +120,8 @@ export default function Navbar() {
                   key={link.href}
                   href={link.href}
                   className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-bold transition-all duration-200 ${pathname === link.href
-                      ? 'text-blue-600 bg-blue-50'
-                      : 'text-slate-500 hover:text-blue-600 hover:bg-slate-50'
+                    ? 'text-blue-600 bg-blue-50'
+                    : 'text-slate-500 hover:text-blue-600 hover:bg-slate-50'
                     }`}
                 >
                   <link.icon className="w-4 h-4" />
@@ -220,8 +220,8 @@ export default function Navbar() {
               href={link.href}
               onClick={() => setIsOpen(false)}
               className={`flex items-center gap-4 px-4 py-4 rounded-2xl text-base font-bold transition-all ${pathname === link.href
-                  ? 'text-blue-600 bg-blue-50'
-                  : 'text-slate-600'
+                ? 'text-blue-600 bg-blue-50'
+                : 'text-slate-600'
                 }`}
             >
               <link.icon className="w-6 h-6" />
