@@ -90,7 +90,7 @@ export default function Navbar() {
       <nav className="h-16 bg-white border-b border-slate-100">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16 items-center">
-            <Link href="/" className="flex-shrink-0 flex items-center gap-2">
+            <Link href="/dashboard" className="flex-shrink-0 flex items-center gap-2">
               <div className="w-9 h-9 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-200">
                 <span className="text-white font-black text-xl italic">B</span>
               </div>
@@ -110,7 +110,7 @@ export default function Navbar() {
         <div className="flex justify-between h-16">
 
           <div className="flex items-center gap-8">
-            <Link href="/" className="flex-shrink-0 flex items-center gap-2 group">
+            <Link href={user ? "/dashboard" : "/"} className="flex-shrink-0 flex items-center gap-2 group">
               <div className="w-9 h-9 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-200 group-hover:scale-105 transition-transform">
                 <span className="text-white font-black text-xl italic">B</span>
               </div>
