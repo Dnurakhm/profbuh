@@ -92,7 +92,7 @@ BEGIN
       'chat_message',
       'Новое сообщение по проекту',
       'У вас новое сообщение в чате проекта',
-      '/jobs/' || NEW.job_id,
+      '/dashboard/chat?jobId=' || NEW.job_id,
       NEW.job_id,
       1,
       false

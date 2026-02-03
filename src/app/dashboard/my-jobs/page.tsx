@@ -1,18 +1,19 @@
 import { createClient } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import Link from "next/link";
-import { Button } from "@/components/ui/button";
-import { MessageSquare, Clock, ArrowRight } from "lucide-react";
+import { JobsList } from "./jobs-list";
 
-export default async function MyJobsPage() {
+export default async function MyJobsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ filter?: string }>;
+}) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
+  const { filter } = await searchParams;
 
   if (!user) redirect("/login");
 
-  // Получаем заказы пользователя и считаем количество откликов (count)
+  // Fetch jobs with bid counts
   const { data: jobs, error } = await supabase
     .from("jobs")
     .select(`
@@ -24,54 +25,5 @@ export default async function MyJobsPage() {
 
   if (error) return <div className="p-10 text-red-500">Ошибка: {error.message}</div>;
 
-  return (
-    <div className="py-6 sm:py-8">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4 mb-6 sm:mb-8">
-        <h1 className="text-2xl sm:text-3xl font-bold">Мои заказы</h1>
-        <Button
-          asChild
-          className="bg-blue-600 rounded-2xl h-10 sm:h-11 px-4 text-sm sm:text-base w-full sm:w-auto"
-        >
-          <Link href="/jobs/create">Создать новый</Link>
-        </Button>
-      </div>
-      
-      <div className="grid gap-4 pb-8">
-        {jobs?.length === 0 ? (
-          <Card className="p-10 text-center border-dashed">
-            <p className="text-slate-500">Вы еще не опубликовали ни одного заказа.</p>
-          </Card>
-        ) : (
-          jobs?.map((job) => (
-            <Card key={job.id} className="hover:shadow-md transition-shadow">
-              <CardContent className="p-6">
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      <Badge variant={job.status === 'open' ? 'default' : 'secondary'} className="bg-green-100 text-green-800 border-none uppercase text-[10px]">
-                        {job.status === 'open' ? 'Активен' : job.status}
-                      </Badge>
-                      <span className="text-xs text-slate-400 flex items-center">
-                        <Clock className="h-3 w-3 mr-1" />
-                        {new Date(job.created_at).toLocaleDateString('ru-RU')}
-                      </span>
-                    </div>
-                    <CardTitle className="text-xl text-slate-900">{job.title}</CardTitle>
-                  </div>
-                  
-                  <Button asChild variant="outline" className="border-blue-200 text-blue-700 hover:bg-blue-50">
-                    <Link href={`/dashboard/my-jobs/${job.id}`}>
-                      <MessageSquare className="mr-2 h-4 w-4" />
-                      Откликов: {job.bids?.length || 0}
-                      <ArrowRight className="ml-2 h-4 w-4" />
-                    </Link>
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))
-        )}
-      </div>
-    </div>
-  );
+  return <JobsList initialJobs={jobs || []} initialFilter={filter as any} />;
 }

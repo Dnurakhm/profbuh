@@ -1,14 +1,42 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo, useRef } from 'react'
 import { createClient } from '@/utils/supabase/client'
-import { Bell, MessageSquare, Clock, UserPlus, CheckCircle, ChevronRight } from 'lucide-react'
-import Link from 'next/link'
+import { Bell, MessageSquare, Clock, UserPlus, CheckCircle, ChevronRight, CheckCheck } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { useNotifications } from '@/providers/notification-provider'
+import { format, isToday, isYesterday } from 'date-fns'
+import { ru } from 'date-fns/locale'
 
 export default function NotificationsPage() {
   const [notifications, setNotifications] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
-  const supabase = createClient()
+  const supabase = useMemo(() => createClient(), [])
+  const { markAllAsRead: globalMarkAll, fetchCount, userId: currentUserId } = useNotifications()
+  const initialized = useRef(false)
+
+  // Группировка уведомлений по дате
+  const groupedNotifications = useMemo(() => {
+    const groups: { [key: string]: any[] } = {
+      'Сегодня': [],
+      'Вчера': [],
+      'Ранее': []
+    }
+
+    notifications.forEach(n => {
+      const date = new Date(n.created_at)
+      if (isToday(date)) groups['Сегодня'].push(n)
+      else if (isYesterday(date)) groups['Вчера'].push(n)
+      else groups['Ранее'].push(n)
+    })
+
+    return groups
+  }, [notifications])
+
+  const handleMarkAllAsRead = async () => {
+    await globalMarkAll()
+    setNotifications(prev => prev.map(n => ({ ...n, is_read: true })))
+  }
 
   // Функция для получения иконок в зависимости от типа
   const getIcon = (type: string, isRead: boolean) => {
@@ -22,182 +50,184 @@ export default function NotificationsPage() {
   }
 
   // Функция для пометки уведомления как прочитанного
-  const markAsRead = async (notificationId: string, link: string) => {
-    // Помечаем как прочитанное в базе
-    await supabase
-      .from('notifications')
-      .update({ is_read: true })
-      .eq('id', notificationId)
-    
-    // Обновляем локальное состояние
-    setNotifications(prev => 
-      prev.map(n => n.id === notificationId ? { ...n, is_read: true } : n)
-    )
-    
-    // Переходим по ссылке
-    window.location.href = link
+  const markAsRead = async (notificationId: string, link: string, isAlreadyRead: boolean) => {
+    if (!isAlreadyRead) {
+      try {
+        await supabase
+          .from('notifications')
+          .update({ is_read: true })
+          .eq('id', notificationId)
+
+        setNotifications(prev =>
+          prev.map(n => n.id === notificationId ? { ...n, is_read: true } : n)
+        )
+        fetchCount()
+      } catch (err) {
+        console.error('NotificationsPage Error:', err)
+      }
+    }
+
+    if (link && link !== '#') {
+      window.location.href = link
+    }
   }
 
   useEffect(() => {
-    let channel: any = null
-    
-    const initNotifications = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) {
-        setLoading(false)
-        return
-      }
+    if (!currentUserId || initialized.current) return;
+    initialized.current = true;
 
+    let channel: any = null
+
+    const initNotifications = async () => {
       try {
-        // Загружаем только последние 50 уведомлений для быстрой загрузки
         const { data, error } = await supabase
           .from('notifications')
           .select('*')
-          .eq('user_id', user.id)
+          .eq('user_id', currentUserId)
           .order('created_at', { ascending: false })
           .limit(50)
 
-        if (error) {
-          console.error('Error loading notifications:', error)
-        } else if (data) {
-          setNotifications(data)
+        if (!error) {
+          setNotifications(data || [])
         }
       } catch (error) {
-        console.error('Error in initNotifications:', error)
+        console.error('NotificationsPage Error:', error)
       } finally {
         setLoading(false)
       }
     }
 
     const setupRealtime = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
-
       channel = supabase
-        .channel(`notifications-page-${user.id}`)
+        .channel(`notifications-page-sync-${currentUserId}`)
         .on(
           'postgres_changes',
           {
-            event: 'INSERT',
+            event: '*',
             schema: 'public',
             table: 'notifications',
-            filter: `user_id=eq.${user.id}`,
+            filter: `user_id=eq.${currentUserId}`,
           },
-          (payload) => {
-            // Оптимистично добавляем новое уведомление без полной перезагрузки
-            setNotifications(prev => [payload.new as any, ...prev])
-          }
-        )
-        .on(
-          'postgres_changes',
-          {
-            event: 'UPDATE',
-            schema: 'public',
-            table: 'notifications',
-            filter: `user_id=eq.${user.id}`,
-          },
-          (payload) => {
-            // Обновляем только измененное уведомление
-            setNotifications(prev => 
-              prev.map(n => n.id === payload.new.id ? { ...n, ...payload.new } : n)
-            )
+          (payload: any) => {
+            if (payload.eventType === 'INSERT') {
+              setNotifications(prev => [payload.new as any, ...prev])
+            } else if (payload.eventType === 'UPDATE') {
+              setNotifications(prev =>
+                prev.map(n => n.id === payload.new.id ? { ...n, ...payload.new } : n)
+              )
+            }
           }
         )
         .subscribe()
     }
 
-    // Загружаем данные и настраиваем realtime параллельно
     initNotifications()
     setupRealtime()
 
-    // Cleanup функция
     return () => {
       if (channel) {
         supabase.removeChannel(channel)
       }
     }
-  }, [])
+  }, [currentUserId, supabase, fetchCount])
 
   if (loading) return (
     <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
-      <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
-      <p className="text-slate-500 font-medium">Загрузка уведомлений...</p>
+      <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+      <p className="text-slate-500 font-bold">Загрузка уведомлений...</p>
     </div>
   )
 
+  const hasUnread = notifications.some(n => !n.is_read)
+
   return (
-    <div className="max-w-3xl mx-auto px-4 py-10">
+    <div className="max-w-3xl mx-auto px-4 py-10 pb-20">
       {/* Заголовок */}
-      <div className="flex items-center justify-between mb-8">
-        <h1 className="text-3xl font-black text-slate-900 flex items-center gap-3">
-          <div className="w-12 h-12 bg-blue-600 rounded-2xl flex items-center justify-center shadow-xl shadow-blue-100 text-white">
-            <Bell size={24} fill="currentColor" />
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-10">
+        <h1 className="text-4xl font-black text-slate-900 flex items-center gap-4">
+          <div className="w-14 h-14 bg-blue-600 rounded-[1.25rem] flex items-center justify-center shadow-2xl shadow-blue-200 text-white rotate-3">
+            <Bell size={28} fill="currentColor" />
           </div>
           Уведомления
         </h1>
+
+        {hasUnread && (
+          <Button
+            variant="ghost"
+            onClick={handleMarkAllAsRead}
+            className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 font-bold gap-2 rounded-xl"
+          >
+            <CheckCheck size={20} />
+            Пометить всё как прочитанное
+          </Button>
+        )}
       </div>
 
       {/* Список */}
-      <div className="space-y-4">
+      <div className="space-y-10">
         {notifications.length === 0 ? (
-          <div className="bg-white rounded-3xl p-16 text-center border-2 border-dashed border-slate-100">
-            <p className="text-slate-400 font-medium">У вас пока нет уведомлений</p>
+          <div className="bg-white rounded-[2.5rem] p-20 text-center border border-slate-100 shadow-sm">
+            <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-6">
+              <Bell size={40} className="text-slate-200" />
+            </div>
+            <h3 className="text-xl font-bold text-slate-900 mb-2">Здесь пока пусто</h3>
+            <p className="text-slate-400 font-medium">Мы сообщим вам о важных событиях</p>
           </div>
         ) : (
-          notifications.map((n) => (
-            <div
-              key={n.id}
-              onClick={() => markAsRead(n.id, n.link || '#')}
-              className={`group block relative p-5 rounded-3xl border transition-all duration-500 cursor-pointer ${
-                n.is_read 
-                  ? 'bg-white border-slate-100 opacity-60' 
-                  : 'bg-white border-blue-200 shadow-xl shadow-blue-50 ring-1 ring-blue-100' 
-              }`}
-            >
-              {/* Акцентная полоска для новых */}
-              {!n.is_read && (
-                <div className="absolute left-0 top-6 bottom-6 w-1.5 bg-blue-600 rounded-r-full shadow-[2px_0_10px_rgba(37,99,235,0.4)]" />
-              )}
+          Object.entries(groupedNotifications).map(([group, items]) => {
+            if (items.length === 0) return null;
+            return (
+              <div key={group} className="space-y-4">
+                <h2 className="text-sm font-black text-slate-400 uppercase tracking-[0.2em] px-2">{group}</h2>
+                <div className="grid gap-3">
+                  {items.map((n) => (
+                    <div
+                      key={n.id}
+                      onClick={() => markAsRead(n.id, n.link || '#', n.is_read)}
+                      className={`group block relative p-5 rounded-[2rem] border transition-all duration-300 cursor-pointer ${n.is_read
+                        ? 'bg-white/50 border-slate-100 opacity-70 grayscale-[0.5]'
+                        : 'bg-white border-blue-100 shadow-xl shadow-blue-50/50 ring-1 ring-blue-50'
+                        } hover:scale-[1.01] active:scale-[0.99]`}
+                    >
+                      <div className="flex gap-5 items-center">
+                        {/* Иконка */}
+                        <div className={`w-14 h-14 shrink-0 rounded-2xl flex items-center justify-center transition-all duration-500 ${n.is_read ? 'bg-slate-100' : 'bg-blue-600 shadow-lg shadow-blue-200 group-hover:rotate-6'
+                          }`}>
+                          {getIcon(n.type, n.is_read)}
+                        </div>
 
-              <div className="flex gap-5 items-center">
-                {/* Иконка */}
-                <div className={`w-14 h-14 shrink-0 rounded-2xl flex items-center justify-center transition-all duration-500 ${
-                  n.is_read ? 'bg-slate-100' : 'bg-blue-600 shadow-lg shadow-blue-200 rotate-3 group-hover:rotate-0'
-                }`}>
-                  {getIcon(n.type, n.is_read)}
-                </div>
-                
-                <div className="flex-1 min-w-0">
-                  <div className="flex justify-between items-start mb-1">
-                    <h3 className={`transition-all duration-500 truncate pr-6 ${
-                      n.is_read ? 'text-slate-600 font-bold' : 'text-slate-900 font-black text-xl tracking-tight'
-                    }`}>
-                      {n.title}
-                      {n.notification_count > 1 && (
-                        <span className="ml-2 text-sm text-blue-600 font-bold">
-                          ({n.notification_count})
-                        </span>
-                      )}
-                    </h3>
-                    <div className="flex items-center gap-1 text-[11px] font-bold text-slate-400 bg-slate-50 px-2 py-1 rounded-lg">
-                      <Clock size={12} />
-                      {new Date(n.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex justify-between items-start mb-1 gap-2">
+                            <h3 className={`transition-all duration-300 truncate ${n.is_read ? 'text-slate-700 font-bold' : 'text-slate-900 font-black text-lg tracking-tight'
+                              }`}>
+                              {n.title}
+                              {n.notification_count > 1 && (
+                                <span className="ml-2 text-sm text-blue-600 font-black px-2 py-0.5 bg-blue-50 rounded-lg">
+                                  +{n.notification_count - 1}
+                                </span>
+                              )}
+                            </h3>
+                            <div className="flex items-center gap-1.5 text-[10px] font-black text-slate-400 bg-slate-50 px-2 py-1 rounded-lg uppercase tracking-wider">
+                              {format(new Date(n.created_at), 'HH:mm')}
+                            </div>
+                          </div>
+
+                          <p className={`text-sm leading-relaxed transition-all duration-300 line-clamp-2 ${n.is_read ? 'text-slate-500 font-medium' : 'text-slate-700 font-bold'
+                            }`}>
+                            {n.content}
+                          </p>
+                        </div>
+
+                        <div className="ml-2 text-slate-300 group-hover:text-blue-600 transition-colors hidden sm:block">
+                          <ChevronRight size={24} />
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                  
-                  <p className={`text-sm leading-relaxed transition-all duration-500 ${
-                    n.is_read ? 'text-slate-500 font-normal' : 'text-slate-800 font-bold'
-                  }`}>
-                    {n.content}
-                  </p>
-                </div>
-
-                <div className="ml-2 text-slate-300 group-hover:text-blue-600 transition-colors">
-                  <ChevronRight size={24} />
+                  ))}
                 </div>
               </div>
-            </div>
-          ))
+            )
+          })
         )}
       </div>
     </div>

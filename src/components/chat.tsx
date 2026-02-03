@@ -22,26 +22,30 @@ export default function Chat({ jobId, userId }: { jobId: string, userId: string 
     const profileCache = new Map<string, any>()
 
     const fetchMessages = async () => {
+      console.log("📡 Chat Component: Starting simple fetch (no join) for jobId:", jobId)
       try {
-        // Загружаем только последние 100 сообщений для быстрой загрузки
+        // Пробуем сначала простейший запрос без JOIN
         const { data, error } = await supabase
           .from('messages')
-          .select(`*, profiles:sender_id (id, full_name)`)
+          .select('*')
           .eq('job_id', jobId)
           .order('created_at', { ascending: false })
           .limit(100)
-        
+
+        console.log("📡 Chat Component: Simple fetch result:", { count: data?.length, error: error?.message })
+
         if (error) {
-          console.error('Error loading messages:', error)
+          console.error('❌ Chat Component: Error loading messages:', error)
           setLoading(false)
           return
         }
 
+        console.log("✅ Chat Component: Messages loaded:", data?.length)
         if (data) {
           // Переворачиваем массив, так как загрузили в обратном порядке
           const reversed = data.reverse()
           setMessages(reversed)
-          
+
           // Кэшируем профили
           reversed.forEach((msg: any) => {
             if (msg.profiles) {
@@ -61,34 +65,34 @@ export default function Chat({ jobId, userId }: { jobId: string, userId: string 
 
     const channel = supabase
       .channel(`chat:${jobId}`)
-      .on('postgres_changes', { 
-        event: 'INSERT', 
-        schema: 'public', 
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
         table: 'messages',
-        filter: `job_id=eq.${jobId}` 
+        filter: `job_id=eq.${jobId}`
       }, async (payload) => {
         // Проверяем кэш перед запросом
         let profile = profileCache.get(payload.new.sender_id)
-        
+
         if (!profile) {
           const { data } = await supabase
             .from('profiles')
             .select('id, full_name')
             .eq('id', payload.new.sender_id)
             .single()
-          
+
           if (data) {
             profile = data
             profileCache.set(payload.new.sender_id, profile)
           }
         }
-        
+
         setMessages((prev) => [...prev, { ...payload.new, profiles: profile }])
         setTimeout(scrollToBottom, 50)
       })
       .subscribe()
 
-    return () => { 
+    return () => {
       supabase.removeChannel(channel)
       profileCache.clear()
     }
@@ -137,7 +141,7 @@ export default function Chat({ jobId, userId }: { jobId: string, userId: string 
           </div>
         </div>
       </div>
-      
+
       {/* Лента сообщений — чистый фон */}
       <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-[#f8fafc]">
         {messages.map((msg) => {
@@ -153,12 +157,11 @@ export default function Chat({ jobId, userId }: { jobId: string, userId: string 
                     {msg.profiles?.full_name || 'Собеседник'}
                   </span>
                 )}
-                
-                <div className={`px-4 py-3 rounded-2xl shadow-sm text-sm leading-relaxed ${
-                  isMine 
-                  ? 'bg-blue-600 text-white rounded-tr-none' 
+
+                <div className={`px-4 py-3 rounded-2xl shadow-sm text-sm leading-relaxed ${isMine
+                  ? 'bg-blue-600 text-white rounded-tr-none'
                   : 'bg-white text-slate-700 border border-slate-100 rounded-tl-none'
-                }`}>
+                  }`}>
                   {msg.content}
                 </div>
 
@@ -175,17 +178,17 @@ export default function Chat({ jobId, userId }: { jobId: string, userId: string 
       {/* Поле ввода — современный минимализм */}
       <form onSubmit={sendMessage} className="p-4 bg-white border-t border-slate-100 flex gap-3 items-center">
         <div className="flex-1 relative">
-          <Input 
+          <Input
             value={newMessage}
             onChange={(e) => setNewMessage(e.target.value)}
             placeholder="Напишите сообщение..."
             className="w-full bg-slate-50 border-none rounded-2xl py-6 px-5 text-sm focus-visible:ring-2 focus-visible:ring-blue-500/20 shadow-inner"
           />
         </div>
-        <Button 
-          type="submit" 
+        <Button
+          type="submit"
           disabled={!newMessage.trim()}
-          size="icon" 
+          size="icon"
           className="bg-blue-600 hover:bg-blue-700 h-12 w-12 rounded-2xl shrink-0 shadow-lg shadow-blue-200 transition-all active:scale-95 disabled:opacity-50"
         >
           <Send className="h-5 w-5 text-white" />
