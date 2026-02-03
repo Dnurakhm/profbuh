@@ -141,9 +141,8 @@ export default function Navbar() {
           <div className="flex items-center gap-2 sm:gap-4">
             {user ? (
               <>
-                {/* MODE TOGGLE */}
+                {/* MODE TOGGLE - HIDDEN FOR NOW
                 <div onClick={toggleMode} className="cursor-pointer hidden md:flex items-center bg-slate-100 rounded-full p-1 border border-slate-200 relative w-[180px] h-9 select-none transition-all hover:border-blue-200">
-                  {/* Background Slider */}
                   <div
                     className={`absolute top-1 bottom-1 w-[calc(50%-4px)] bg-white rounded-full shadow-sm transition-all duration-300 ease-out ${mode === 'client' ? 'left-1' : 'left-[calc(50%)]'
                       }`}
@@ -158,6 +157,7 @@ export default function Navbar() {
                 </div>
 
                 <div className="h-6 w-px bg-slate-200 hidden md:block" />
+                */}
 
                 <Notifications userId={user.id} />
 
@@ -206,6 +206,7 @@ export default function Navbar() {
       {/* Mobile Menu */}
       {isOpen && (
         <div className="md:hidden bg-white border-b border-slate-100 p-4 space-y-2 animate-in slide-in-from-top duration-300">
+          {/* USER MODE TOGGLE MOBILE - HIDDEN FOR NOW
           {user && (
             <div
               onClick={() => { toggleMode(); setIsOpen(false); }}
@@ -220,6 +221,7 @@ export default function Navbar() {
               </span>
             </div>
           )}
+          */}
 
           {user && links.map((link) => (
             <Link
