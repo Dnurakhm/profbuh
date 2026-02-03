@@ -61,21 +61,21 @@ export function ClientDashboardView({ profile, stats }: { profile: any, stats: a
                         {stats.recentActivity && stats.recentActivity.length > 0 ? (
                             <div className="space-y-4">
                                 {stats.recentActivity.map((job: any) => (
-                                    <div key={job.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100 hover:border-blue-100 transition-colors">
+                                    <div key={job.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100 hover:border-blue-100 transition-colors gap-3">
                                         <div className="flex items-center gap-3">
-                                            <div className="h-10 w-10 rounded-full bg-white border border-slate-100 flex items-center justify-center text-blue-600">
+                                            <div className="h-10 w-10 shrink-0 rounded-full bg-white border border-slate-100 flex items-center justify-center text-blue-600">
                                                 <FileText className="w-5 h-5" />
                                             </div>
-                                            <div>
-                                                <p className="font-bold text-slate-900 text-sm">{job.title}</p>
-                                                <p className="text-xs text-slate-500">
+                                            <div className="min-w-0">
+                                                <p className="font-bold text-slate-900 text-sm truncate">{job.title}</p>
+                                                <p className="text-[10px] text-slate-500 font-medium">
                                                     {new Date(job.created_at).toLocaleDateString('ru-RU')}
                                                 </p>
                                             </div>
                                         </div>
-                                        <div className={`text-xs font-bold px-2 py-1 rounded-md uppercase tracking-wider ${job.status === 'open' ? 'bg-blue-100 text-blue-700' :
-                                            job.status === 'in_progress' ? 'bg-green-100 text-green-700' :
-                                                'bg-slate-100 text-slate-500'
+                                        <div className={`text-[10px] font-black px-2 py-1 rounded border uppercase tracking-wider ${job.status === 'open' ? 'bg-blue-100 text-blue-700 border-blue-200' :
+                                            job.status === 'in_progress' ? 'bg-green-100 text-green-700 border-green-200' :
+                                                'bg-slate-100 text-slate-500 border-slate-200'
                                             }`}>
                                             {job.status === 'open' ? 'Поиск' :
                                                 job.status === 'in_progress' ? 'В работе' : 'Закрыт'}
@@ -157,14 +157,14 @@ function StatCard({
     }
 
     const Content = () => (
-        <Card className="border-none shadow-sm hover:shadow-md transition-shadow cursor-pointer h-full">
-            <CardContent className="p-6 flex items-center gap-4">
-                <div className={`p-4 rounded-2xl ${colors[color]}`}>
-                    <Icon className="w-6 h-6" />
+        <Card className="border-none shadow-sm hover:shadow-md transition-all cursor-pointer h-full group">
+            <CardContent className="p-4 sm:p-6 flex items-center gap-4">
+                <div className={`p-3 sm:p-4 shrink-0 rounded-xl sm:rounded-2xl ${colors[color]} group-hover:scale-110 transition-transform`}>
+                    <Icon className="w-5 h-5 sm:w-6 sm:h-6" />
                 </div>
-                <div>
-                    <p className="text-sm font-medium text-slate-500">{title}</p>
-                    <h3 className="text-2xl font-black text-slate-900">{value}</h3>
+                <div className="min-w-0">
+                    <p className="text-[10px] sm:text-sm font-bold text-slate-500 uppercase tracking-wider truncate">{title}</p>
+                    <h3 className="text-lg sm:text-2xl font-black text-slate-900 truncate">{value}</h3>
                 </div>
             </CardContent>
         </Card>

@@ -164,61 +164,67 @@ export default function NotificationsPage() {
       </div>
 
       {/* Список */}
-      <div className="space-y-10">
+      <div className="space-y-8">
         {notifications.length === 0 ? (
-          <div className="bg-white rounded-[2.5rem] p-20 text-center border border-slate-100 shadow-sm">
-            <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-6">
-              <Bell size={40} className="text-slate-200" />
+          <div className="bg-white rounded-[2.5rem] p-12 sm:p-20 text-center border border-slate-100 shadow-sm transition-all">
+            <div className="w-16 h-16 sm:w-20 sm:h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-6">
+              <Bell size={32} className="text-slate-200" />
             </div>
             <h3 className="text-xl font-bold text-slate-900 mb-2">Здесь пока пусто</h3>
-            <p className="text-slate-400 font-medium">Мы сообщим вам о важных событиях</p>
+            <p className="text-slate-400 font-medium text-sm">Мы сообщим вам о важных событиях</p>
           </div>
         ) : (
           Object.entries(groupedNotifications).map(([group, items]) => {
             if (items.length === 0) return null;
             return (
               <div key={group} className="space-y-4">
-                <h2 className="text-sm font-black text-slate-400 uppercase tracking-[0.2em] px-2">{group}</h2>
+                <h2 className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">{group}</h2>
                 <div className="grid gap-3">
                   {items.map((n) => (
                     <div
                       key={n.id}
                       onClick={() => markAsRead(n.id, n.link || '#', n.is_read)}
-                      className={`group block relative p-5 rounded-[2rem] border transition-all duration-300 cursor-pointer ${n.is_read
+                      className={`group block relative p-4 sm:p-5 rounded-[1.5rem] sm:rounded-[2rem] border transition-all duration-300 cursor-pointer ${n.is_read
                         ? 'bg-white/50 border-slate-100 opacity-70 grayscale-[0.5]'
                         : 'bg-white border-blue-100 shadow-xl shadow-blue-50/50 ring-1 ring-blue-50'
                         } hover:scale-[1.01] active:scale-[0.99]`}
                     >
-                      <div className="flex gap-5 items-center">
+                      <div className="flex flex-col sm:flex-row gap-4 sm:gap-5 items-start sm:items-center">
                         {/* Иконка */}
-                        <div className={`w-14 h-14 shrink-0 rounded-2xl flex items-center justify-center transition-all duration-500 ${n.is_read ? 'bg-slate-100' : 'bg-blue-600 shadow-lg shadow-blue-200 group-hover:rotate-6'
-                          }`}>
-                          {getIcon(n.type, n.is_read)}
+                        <div className="flex items-center justify-between w-full sm:w-auto">
+                          <div className={`w-12 h-12 sm:w-14 sm:h-14 shrink-0 rounded-[1.25rem] flex items-center justify-center transition-all duration-500 ${n.is_read ? 'bg-slate-100' : 'bg-blue-600 shadow-lg shadow-blue-200 group-hover:rotate-6'
+                            }`}>
+                            {getIcon(n.type, n.is_read)}
+                          </div>
+
+                          <div className="sm:hidden flex items-center gap-1.5 text-[10px] font-black text-slate-400 bg-slate-50 px-2 py-1 rounded-lg uppercase tracking-wider">
+                            {format(new Date(n.created_at), 'HH:mm')}
+                          </div>
                         </div>
 
                         <div className="flex-1 min-w-0">
                           <div className="flex justify-between items-start mb-1 gap-2">
-                            <h3 className={`transition-all duration-300 truncate ${n.is_read ? 'text-slate-700 font-bold' : 'text-slate-900 font-black text-lg tracking-tight'
+                            <h3 className={`transition-all duration-300 truncate leading-tight ${n.is_read ? 'text-slate-700 font-bold text-sm sm:text-base' : 'text-slate-900 font-black text-base sm:text-lg tracking-tight'
                               }`}>
                               {n.title}
                               {n.notification_count > 1 && (
-                                <span className="ml-2 text-sm text-blue-600 font-black px-2 py-0.5 bg-blue-50 rounded-lg">
+                                <span className="ml-2 text-[10px] sm:text-sm text-blue-600 font-black px-2 py-0.5 bg-blue-50 rounded-lg">
                                   +{n.notification_count - 1}
                                 </span>
                               )}
                             </h3>
-                            <div className="flex items-center gap-1.5 text-[10px] font-black text-slate-400 bg-slate-50 px-2 py-1 rounded-lg uppercase tracking-wider">
+                            <div className="hidden sm:flex items-center gap-1.5 text-[10px] font-black text-slate-400 bg-slate-50 px-2 py-1 rounded-lg uppercase tracking-wider">
                               {format(new Date(n.created_at), 'HH:mm')}
                             </div>
                           </div>
 
-                          <p className={`text-sm leading-relaxed transition-all duration-300 line-clamp-2 ${n.is_read ? 'text-slate-500 font-medium' : 'text-slate-700 font-bold'
+                          <p className={`text-xs sm:text-sm leading-relaxed transition-all duration-300 line-clamp-2 ${n.is_read ? 'text-slate-500 font-medium' : 'text-slate-700 font-bold'
                             }`}>
                             {n.content}
                           </p>
                         </div>
 
-                        <div className="ml-2 text-slate-300 group-hover:text-blue-600 transition-colors hidden sm:block">
+                        <div className="hidden sm:block ml-2 text-slate-300 group-hover:text-blue-600 transition-colors">
                           <ChevronRight size={24} />
                         </div>
                       </div>

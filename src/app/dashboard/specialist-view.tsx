@@ -59,29 +59,31 @@ export function SpecialistDashboardView({ profile, stats }: { profile: any, stat
                         {stats.recommendedJobs && stats.recommendedJobs.length > 0 ? (
                             <div className="space-y-4">
                                 {stats.recommendedJobs.map((job: any) => (
-                                    <div key={job.id} className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-100 hover:border-blue-200 hover:bg-white transition-all group">
+                                    <div key={job.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-100 hover:border-blue-200 hover:bg-white transition-all group gap-4">
                                         <div className="flex items-center gap-4">
-                                            <div className="h-12 w-12 rounded-full bg-white border border-slate-200 flex items-center justify-center text-blue-600 group-hover:scale-110 transition-transform">
+                                            <div className="h-12 w-12 shrink-0 rounded-full bg-white border border-slate-200 flex items-center justify-center text-blue-600 group-hover:scale-110 transition-transform">
                                                 <Briefcase className="w-6 h-6" />
                                             </div>
-                                            <div>
-                                                <h4 className="font-bold text-slate-900 text-base">{job.title}</h4>
+                                            <div className="min-w-0">
+                                                <h4 className="font-bold text-slate-900 text-base truncate">{job.title}</h4>
                                                 <div className="flex items-center gap-3 mt-1">
-                                                    <span className="text-xs font-bold px-2 py-0.5 rounded-md bg-slate-200 text-slate-600 uppercase tracking-wider">
+                                                    <span className="text-[10px] font-black px-2 py-0.5 rounded bg-slate-200 text-slate-600 uppercase tracking-tighter">
                                                         {job.category || 'Общее'}
                                                     </span>
-                                                    <span className="text-xs text-slate-400">
+                                                    <span className="text-xs text-slate-400 font-medium whitespace-nowrap">
                                                         {new Date(job.created_at).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' })}
                                                     </span>
                                                 </div>
                                             </div>
                                         </div>
-                                        <div className="text-right">
+                                        <div className="flex sm:flex-col items-center sm:items-end justify-between w-full sm:w-auto mt-2 sm:mt-0 pt-3 sm:pt-0 border-t sm:border-0 border-slate-100">
                                             <p className="font-black text-slate-900 text-lg">
                                                 {job.budget ? job.budget.toLocaleString() + ' ₸' : 'Договорная'}
                                             </p>
-                                            <Button variant="link" asChild className="p-0 h-auto text-blue-600 hover:text-blue-700 text-sm font-bold opacity-0 group-hover:opacity-100 transition-opacity">
-                                                <Link href={`/jobs/${job.id}`}>Посмотреть</Link>
+                                            <Button variant="link" asChild className="p-0 h-auto text-blue-600 hover:text-blue-700 text-sm font-bold opacity-100 sm:opacity-0 group-hover:opacity-100 transition-all flex items-center gap-1">
+                                                <Link href={`/jobs/${job.id}`}>
+                                                    Посмотреть <TrendingUp className="w-3 h-3" />
+                                                </Link>
                                             </Button>
                                         </div>
                                     </div>
@@ -162,13 +164,13 @@ function DashboardStat({ title, value, icon: Icon, color, link }: any) {
     return (
         <Link href={link || "#"} className="block group">
             <Card className="border-none shadow-sm hover:shadow-md transition-all rounded-2xl bg-white h-full relative overflow-hidden">
-                <CardContent className="p-6 flex items-center justify-between">
-                    <div>
-                        <p className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-1">{title}</p>
-                        <h3 className="text-2xl font-black text-slate-900">{value}</h3>
+                <CardContent className="p-4 sm:p-6 flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                        <p className="text-[10px] sm:text-sm font-bold text-slate-400 uppercase tracking-wider mb-1 truncate">{title}</p>
+                        <h3 className="text-lg sm:text-2xl font-black text-slate-900 truncate">{value}</h3>
                     </div>
-                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${colors[color] || colors.slate} group-hover:scale-110 transition-transform`}>
-                        <Icon className="w-6 h-6" />
+                    <div className={`w-10 h-10 sm:w-12 sm:h-12 shrink-0 rounded-xl sm:rounded-2xl flex items-center justify-center ${colors[color] || colors.slate} group-hover:scale-110 transition-transform`}>
+                        <Icon className="w-5 h-5 sm:w-6 sm:h-6" />
                     </div>
                 </CardContent>
                 {link && (

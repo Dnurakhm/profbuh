@@ -81,40 +81,42 @@ export function JobsFeed({ initialJobs, appliedJobIds }: { initialJobs: any[], a
                         return (
                             <Link key={job.id} href={`/jobs/${job.id}`} className="block group">
                                 <Card className={`border-slate-200 transaction-all duration-300 ${isApplied ? 'bg-blue-50/50 border-blue-200' : 'hover:border-blue-400 hover:shadow-md'}`}>
-                                    <CardContent className="p-6">
+                                    <CardContent className="p-4 sm:p-6">
                                         <div className="flex flex-col md:flex-row justify-between gap-4">
-                                            <div className="space-y-3">
-                                                <div className="flex items-start justify-between md:hidden">
-                                                    <div className="flex items-center gap-2">
-                                                        <Badge variant="secondary" className="bg-blue-50 text-blue-700 hover:bg-blue-100">
-                                                            {job.category || 'Общее'}
-                                                        </Badge>
-                                                        {isApplied && (
-                                                            <Badge className="bg-green-600 hover:bg-green-700">Вы откликнулись</Badge>
-                                                        )}
-                                                    </div>
-                                                    <span className="font-bold text-slate-900">
-                                                        {job.budget ? `${job.budget.toLocaleString('ru-RU')} ₸` : 'Договорная'}
-                                                    </span>
+                                            <div className="space-y-3 min-w-0">
+                                                <div className="flex items-center justify-between md:hidden gap-2">
+                                                    <Badge variant="secondary" className="bg-blue-50 text-blue-700 hover:bg-blue-100 text-[10px] py-0 px-2">
+                                                        {job.category || 'Общее'}
+                                                    </Badge>
+                                                    {isApplied ? (
+                                                        <Badge className="bg-green-600 hover:bg-green-700 text-[10px] py-0 px-2">✓ Отклик</Badge>
+                                                    ) : (
+                                                        <span className="font-black text-slate-900 text-sm whitespace-nowrap">
+                                                            {job.budget ? `${job.budget.toLocaleString('ru-RU')} ₸` : 'Договорная'}
+                                                        </span>
+                                                    )}
                                                 </div>
 
-                                                <h3 className="text-xl font-bold text-slate-900 group-hover:text-blue-600 transition-colors">
+                                                <h3 className="text-lg sm:text-xl font-bold text-slate-900 group-hover:text-blue-600 transition-colors leading-snug">
                                                     {job.title}
                                                 </h3>
 
-                                                <p className="text-slate-500 line-clamp-2 text-sm max-w-2xl">
+                                                <p className="text-slate-500 line-clamp-2 text-sm max-w-2xl leading-relaxed">
                                                     {job.description}
                                                 </p>
 
-                                                <div className="flex flex-wrap items-center gap-4 text-xs font-medium text-slate-400 pt-2">
-                                                    <span className="flex items-center gap-1">
+                                                <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-[10px] sm:text-xs font-bold text-slate-400 pt-2 uppercase tracking-wide">
+                                                    <span className="flex items-center gap-1.5 bg-slate-50 px-2 py-1 rounded-md">
                                                         <Clock className="w-3.5 h-3.5" />
-                                                        {new Date(job.created_at).toLocaleDateString()}
+                                                        {new Date(job.created_at).toLocaleDateString('ru-RU')}
                                                     </span>
-                                                    <span className="flex items-center gap-1">
+                                                    <span className="flex items-center gap-1.5 bg-slate-50 px-2 py-1 rounded-md">
                                                         <Briefcase className="w-3.5 h-3.5" />
                                                         {job.bids_count || 0} откликов
                                                     </span>
+                                                    <div className="md:hidden flex-1 text-right">
+                                                        <span className="text-blue-600 font-black">Подробнее →</span>
+                                                    </div>
                                                 </div>
                                             </div>
 
@@ -134,7 +136,7 @@ export function JobsFeed({ initialJobs, appliedJobIds }: { initialJobs: any[], a
                                                     <div className="text-lg font-black text-slate-900">
                                                         {job.budget ? `${job.budget.toLocaleString('ru-RU')} ₸` : 'Договорная'}
                                                     </div>
-                                                    <div className="text-xs text-slate-400 font-medium">Бюджет проекта</div>
+                                                    <div className="text-xs text-slate-400 font-medium tracking-wide">Бюджет проекта</div>
                                                 </div>
                                             </div>
                                         </div>

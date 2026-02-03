@@ -125,9 +125,9 @@ export function JobsList({ initialJobs, initialFilter = 'all' }: { initialJobs: 
                                     </div>
 
                                     {/* Main Content */}
-                                    <div className="flex-1 space-y-3">
-                                        <div className="flex items-center gap-3">
-                                            <Badge className={`border-none px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide ${job.status === 'open' ? 'bg-blue-100 text-blue-700' :
+                                    <div className="flex-1 space-y-3 min-w-0">
+                                        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                                            <Badge className={`border-none px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-tight ${job.status === 'open' ? 'bg-blue-100 text-blue-700' :
                                                 job.status === 'in_progress' ? 'bg-green-100 text-green-700' :
                                                     job.status === 'cancelled' ? 'bg-red-100 text-red-700' : 'bg-slate-100 text-slate-500'
                                                 }`}>
@@ -135,14 +135,14 @@ export function JobsList({ initialJobs, initialFilter = 'all' }: { initialJobs: 
                                                     job.status === 'in_progress' ? 'В работе' :
                                                         job.status === 'cancelled' ? 'Отменен' : 'Завершен'}
                                             </Badge>
-                                            <span className="text-xs font-medium text-slate-400 flex items-center">
+                                            <span className="text-[10px] sm:text-xs font-bold text-slate-400 flex items-center bg-slate-50 px-2 py-0.5 rounded-md">
                                                 <Clock className="w-3 h-3 mr-1" />
-                                                {new Date(job.created_at).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' })}
+                                                {new Date(job.created_at).toLocaleDateString('ru-RU')}
                                             </span>
                                         </div>
 
                                         <Link href={`/dashboard/my-jobs/${job.id}`} className="block">
-                                            <h3 className="text-xl font-bold text-slate-900 group-hover:text-blue-600 transition-colors line-clamp-1">
+                                            <h3 className="text-lg sm:text-xl font-bold text-slate-900 group-hover:text-blue-600 transition-colors line-clamp-1 leading-tight">
                                                 {job.title}
                                             </h3>
                                         </Link>
@@ -151,31 +151,31 @@ export function JobsList({ initialJobs, initialFilter = 'all' }: { initialJobs: 
                                             {job.description}
                                         </p>
 
-                                        <div className="flex items-center gap-6 pt-2">
-                                            <div className="text-sm">
-                                                <span className="text-slate-400 font-medium">Бюджет: </span>
-                                                <span className="font-bold text-slate-900">
+                                        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 pt-1">
+                                            <div className="text-[11px] sm:text-sm">
+                                                <span className="text-slate-400 font-bold uppercase tracking-tighter mr-1">Бюджет:</span>
+                                                <span className="font-black text-slate-900">
                                                     {job.budget ? `${job.budget.toLocaleString()} ₸` : "Договорная"}
                                                 </span>
                                             </div>
-                                            <div className="text-sm">
-                                                <span className="text-slate-400 font-medium">Категория: </span>
-                                                <span className="font-bold text-slate-700">{job.category}</span>
+                                            <div className="text-[11px] sm:text-sm">
+                                                <span className="text-slate-400 font-bold uppercase tracking-tighter mr-1">Категория:</span>
+                                                <span className="font-black text-slate-700">{job.category}</span>
                                             </div>
                                         </div>
                                     </div>
 
                                     {/* Actions */}
-                                    <div className="flex flex-row md:flex-col justify-end gap-3 mt-4 md:mt-0 border-t md:border-t-0 md:border-l border-slate-100 pt-4 md:pt-0 md:pl-6 md:w-48">
-                                        <Button asChild variant="outline" className="w-full justify-between group/btn border-slate-200 hover:border-blue-300 hover:bg-blue-50">
+                                    <div className="flex flex-row md:flex-col justify-end gap-3 mt-4 md:mt-0 border-t md:border-t-0 md:border-l border-slate-100 pt-4 md:pt-0 md:pl-6 md:w-52">
+                                        <Button asChild variant="outline" className="flex-1 md:flex-none justify-between group/btn border-slate-200 hover:border-blue-300 hover:bg-blue-50 h-10 px-4 rounded-xl">
                                             <Link href={`/dashboard/my-jobs/${job.id}`}>
                                                 <div className="flex items-center gap-2">
                                                     <MessageSquare className="w-4 h-4 text-blue-600" />
-                                                    <span className="font-bold text-slate-700 group-hover/btn:text-blue-700">
+                                                    <span className="font-bold text-xs sm:text-sm text-slate-700 group-hover/btn:text-blue-700">
                                                         Отклики
                                                     </span>
                                                 </div>
-                                                <Badge className="bg-blue-600 text-white hover:bg-blue-700 rounded-full px-2">
+                                                <Badge className="bg-blue-600 text-white hover:bg-blue-700 rounded-full h-5 min-w-[20px] px-1.5 flex items-center justify-center text-[10px]">
                                                     {job.bidsCount || job.bids?.length || 0}
                                                 </Badge>
                                             </Link>
@@ -183,35 +183,35 @@ export function JobsList({ initialJobs, initialFilter = 'all' }: { initialJobs: 
 
                                         <DropdownMenu>
                                             <DropdownMenuTrigger asChild>
-                                                <Button variant="ghost" className="w-full justify-start text-slate-400 hover:text-slate-700">
-                                                    <MoreVertical className="w-4 h-4 mr-2" />
-                                                    Управление
+                                                <Button variant="ghost" className="flex-1 md:flex-none justify-center md:justify-start text-slate-400 hover:text-slate-700 h-10 rounded-xl">
+                                                    <MoreVertical className="w-4 h-4 mr-0 md:mr-2" />
+                                                    <span className="hidden md:inline">Управление</span>
                                                 </Button>
                                             </DropdownMenuTrigger>
-                                            <DropdownMenuContent align="end" className="w-48">
-                                                <DropdownMenuLabel>Действия</DropdownMenuLabel>
-                                                <DropdownMenuItem asChild>
+                                            <DropdownMenuContent align="end" className="w-56 rounded-2xl p-2 border-slate-100 shadow-2xl">
+                                                <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 tracking-widest px-2 pb-1">Действия</DropdownMenuLabel>
+                                                <DropdownMenuItem asChild className="rounded-xl focus:bg-slate-50 cursor-pointer py-2.5">
                                                     <Link href={`/dashboard/my-jobs/${job.id}`}>
-                                                        <Eye className="w-4 h-4 mr-2" /> Просмотр
+                                                        <Eye className="w-4 h-4 mr-2 text-blue-600" /> Просмотр заказа
                                                     </Link>
                                                 </DropdownMenuItem>
                                                 {job.status === 'open' && (
                                                     <>
-                                                        <DropdownMenuItem asChild>
+                                                        <DropdownMenuItem asChild className="rounded-xl focus:bg-slate-50 cursor-pointer py-2.5">
                                                             <Link href={`/dashboard/my-jobs/${job.id}/edit`}>
-                                                                <Pencil className="w-4 h-4 mr-2" /> Редактировать
+                                                                <Pencil className="w-4 h-4 mr-2 text-amber-600" /> Редактировать
                                                             </Link>
                                                         </DropdownMenuItem>
-                                                        <DropdownMenuSeparator />
+                                                        <DropdownMenuSeparator className="bg-slate-50" />
                                                         <DropdownMenuItem
                                                             onClick={(e) => {
                                                                 e.preventDefault()
                                                                 handleCancel(job.id)
                                                             }}
-                                                            className="text-red-600 focus:text-red-600 cursor-pointer"
+                                                            className="text-red-600 focus:text-white focus:bg-red-600 rounded-xl cursor-pointer py-2.5"
                                                         >
-                                                            <Trash2 className="w-4 h-4 mr-2" /> Отменить
-                                                        </DropdownMenuItem>
+                                                            <Trash2 className="w-4 h-4 mr-2" /> Отменить заказ
+                                                            +                           </DropdownMenuItem>
                                                     </>
                                                 )}
                                             </DropdownMenuContent>
