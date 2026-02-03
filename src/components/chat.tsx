@@ -70,7 +70,7 @@ export default function Chat({ jobId, userId }: { jobId: string, userId: string 
         schema: 'public',
         table: 'messages',
         filter: `job_id=eq.${jobId}`
-      }, async (payload) => {
+      }, async (payload: any) => {
         // Проверяем кэш перед запросом
         let profile = profileCache.get(payload.new.sender_id)
 
