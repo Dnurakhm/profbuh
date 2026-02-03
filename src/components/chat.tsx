@@ -11,7 +11,17 @@ export default function Chat({ jobId, userId }: { jobId: string, userId: string 
   const [newMessage, setNewMessage] = useState('')
   const [loading, setLoading] = useState(true)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const [profile, setProfile] = useState<any>(null)
   const supabase = createClient()
+
+  // Получаем профиль текущего пользователя для Optimistic UI
+  useEffect(() => {
+    const fetchProfile = async () => {
+      const { data } = await supabase.from('profiles').select('id, full_name').eq('id', userId).single()
+      if (data) setProfile(data)
+    }
+    fetchProfile()
+  }, [userId])
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
@@ -22,17 +32,17 @@ export default function Chat({ jobId, userId }: { jobId: string, userId: string 
     const profileCache = new Map<string, any>()
 
     const fetchMessages = async () => {
-      console.log("📡 Chat Component: Starting simple fetch (no join) for jobId:", jobId)
+      console.log("📡 Chat Component: Starting optimized fetch for jobId:", jobId)
       try {
-        // Пробуем сначала простейший запрос без JOIN
+        // Оптимизированный запрос с JOIN профилей в один заход
         const { data, error } = await supabase
           .from('messages')
-          .select('*')
+          .select('*, profiles:sender_id(full_name)')
           .eq('job_id', jobId)
           .order('created_at', { ascending: false })
           .limit(100)
 
-        console.log("📡 Chat Component: Simple fetch result:", { count: data?.length, error: error?.message })
+        console.log("📡 Chat Component: Fetch result:", { count: data?.length, error: error?.message })
 
         if (error) {
           console.error('❌ Chat Component: Error loading messages:', error)
@@ -40,14 +50,13 @@ export default function Chat({ jobId, userId }: { jobId: string, userId: string 
           return
         }
 
-        console.log("✅ Chat Component: Messages loaded:", data?.length)
         if (data) {
           // Переворачиваем массив, так как загрузили в обратном порядке
-          const reversed = data.reverse()
-          setMessages(reversed)
+          const messagesWithProfiles = data.reverse()
+          setMessages(messagesWithProfiles)
 
-          // Кэшируем профили
-          reversed.forEach((msg: any) => {
+          // Предварительно заполняем кэш из первых 100 сообщений
+          messagesWithProfiles.forEach((msg: any) => {
             if (msg.profiles) {
               profileCache.set(msg.sender_id, msg.profiles)
             }
@@ -71,23 +80,16 @@ export default function Chat({ jobId, userId }: { jobId: string, userId: string 
         table: 'messages',
         filter: `job_id=eq.${jobId}`
       }, async (payload: any) => {
-        // Проверяем кэш перед запросом
-        let profile = profileCache.get(payload.new.sender_id)
+        // Проверяем, нет ли уже такого сообщения (по ID)
+        // Это предотвращает дублирование при Optimistic UI
+        setMessages((prev) => {
+          const exists = prev.some(m => m.id === payload.new.id)
+          if (exists) return prev
 
-        if (!profile) {
-          const { data } = await supabase
-            .from('profiles')
-            .select('id, full_name')
-            .eq('id', payload.new.sender_id)
-            .single()
-
-          if (data) {
-            profile = data
-            profileCache.set(payload.new.sender_id, profile)
-          }
-        }
-
-        setMessages((prev) => [...prev, { ...payload.new, profiles: profile }])
+          // Также пробуем найти по контенту и времени, если реальный ID еще не заменен
+          // Но обычно проверка по ID достаточна, так как sendMessage обновляет tempId на realId
+          return [...prev, { ...payload.new, profiles: profileCache.get(payload.new.sender_id) }]
+        })
         setTimeout(scrollToBottom, 50)
       })
       .subscribe()
@@ -102,19 +104,43 @@ export default function Chat({ jobId, userId }: { jobId: string, userId: string 
     e.preventDefault()
     if (!newMessage.trim()) return
 
-    const { error } = await supabase
+    const content = newMessage.trim()
+    setNewMessage('')
+
+    // --- Optimistic UI Update ---
+    const tempId = 'temp-' + Date.now()
+    const optimisticMessage = {
+      id: tempId,
+      job_id: jobId,
+      sender_id: userId,
+      content: content,
+      created_at: new Date().toISOString(),
+      profiles: profile, // Используем загруженный профиль
+      sending: true // Флаг для визуальной индикации отправки
+    }
+
+    setMessages(prev => [...prev, optimisticMessage])
+    setTimeout(scrollToBottom, 50)
+
+    const { data, error } = await supabase
       .from('messages')
       .insert({
         job_id: jobId,
         sender_id: userId,
-        content: newMessage.trim()
+        content: content
       })
+      .select()
+      .single()
 
     if (error) {
       console.error('Ошибка при отправке сообщения:', error)
+      // Удаляем оптимистичное сообщение при ошибке
+      setMessages(prev => prev.filter(m => m.id !== tempId))
+      setNewMessage(content) // Возвращаем текст в поле ввода
       alert('Не удалось отправить сообщение: ' + error.message)
     } else {
-      setNewMessage('')
+      // Заменяем временное сообщение реальным из базы (или просто убираем флаг sending)
+      setMessages(prev => prev.map(m => m.id === tempId ? { ...m, ...data, sending: false } : m))
     }
   }
 
@@ -161,7 +187,7 @@ export default function Chat({ jobId, userId }: { jobId: string, userId: string 
                 <div className={`px-4 py-3 rounded-2xl shadow-sm text-sm leading-relaxed ${isMine
                   ? 'bg-blue-600 text-white rounded-tr-none'
                   : 'bg-white text-slate-700 border border-slate-100 rounded-tl-none'
-                  }`}>
+                  } ${msg.sending ? 'opacity-60 grayscale' : ''}`}>
                   {msg.content}
                 </div>
 

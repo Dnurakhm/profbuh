@@ -1,17 +1,20 @@
 'use client'
 
 import { useEffect, useState, useMemo, useRef } from 'react'
+import { useRouter } from 'next/navigation'
 import { createClient } from '@/utils/supabase/client'
 import { Bell, MessageSquare, Clock, UserPlus, CheckCircle, ChevronRight, CheckCheck } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useNotifications } from '@/providers/notification-provider'
 import { format, isToday, isYesterday } from 'date-fns'
 import { ru } from 'date-fns/locale'
+import { NotificationSkeleton } from '@/components/ui/skeletons'
 
 export default function NotificationsPage() {
   const [notifications, setNotifications] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const supabase = useMemo(() => createClient(), [])
+  const router = useRouter()
   const { markAllAsRead: globalMarkAll, fetchCount, userId: currentUserId } = useNotifications()
   const initialized = useRef(false)
 
@@ -68,7 +71,7 @@ export default function NotificationsPage() {
     }
 
     if (link && link !== '#') {
-      window.location.href = link
+      router.push(link)
     }
   }
 
@@ -132,9 +135,12 @@ export default function NotificationsPage() {
   }, [currentUserId, supabase, fetchCount])
 
   if (loading) return (
-    <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
-      <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
-      <p className="text-slate-500 font-bold">Загрузка уведомлений...</p>
+    <div className="max-w-3xl mx-auto px-4 py-10 pb-20">
+      <div className="flex items-center gap-4 mb-10">
+        <div className="w-14 h-14 bg-slate-100 rounded-[1.25rem] animate-pulse" />
+        <div className="w-48 h-10 bg-slate-100 rounded-xl animate-pulse" />
+      </div>
+      <NotificationSkeleton />
     </div>
   )
 

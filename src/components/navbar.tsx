@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 import { createClient } from '@/utils/supabase/client'
 import { Button } from '@/components/ui/button'
 import { useUserMode } from '@/context/user-mode-context'
@@ -26,7 +26,13 @@ export default function Navbar() {
   const [mounted, setMounted] = useState(false)
   const pathname = usePathname()
   const supabase = createClient()
+  const router = useRouter()
   const { mode, toggleMode } = useUserMode()
+
+  // Функция для предзагрузки данных (SSR страниц)
+  const prefetchLink = (href: string) => {
+    router.prefetch(href)
+  }
 
   useEffect(() => {
     setMounted(true)
@@ -119,6 +125,7 @@ export default function Navbar() {
                 <Link
                   key={link.href}
                   href={link.href}
+                  onMouseEnter={() => prefetchLink(link.href)}
                   className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-bold transition-all duration-200 ${pathname === link.href
                     ? 'text-blue-600 bg-blue-50'
                     : 'text-slate-500 hover:text-blue-600 hover:bg-slate-50'
