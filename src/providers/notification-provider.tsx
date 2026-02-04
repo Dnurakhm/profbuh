@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation'
 
 interface NotificationContextType {
     unreadCount: number
-    markAllAsRead: () => Promise<void>
+    markAllAsRead: (types?: string[]) => Promise<void>
     fetchCount: () => Promise<void>
     userId?: string
 }
@@ -27,6 +27,7 @@ export function NotificationProvider({ children, userId }: { children: ReactNode
                 .select('id', { count: 'exact', head: true })
                 .eq('user_id', userId)
                 .eq('is_read', false)
+                .neq('type', 'chat_message')
 
             if (!error) {
                 setUnreadCount(count || 0)
@@ -36,23 +37,32 @@ export function NotificationProvider({ children, userId }: { children: ReactNode
         }
     }, [userId, supabase])
 
-    const markAllAsRead = useCallback(async () => {
+    const markAllAsRead = useCallback(async (types?: string[]) => {
         if (!userId) return
         try {
-            const { error } = await supabase
+            let query = supabase
                 .from('notifications')
                 .update({ is_read: true })
                 .eq('user_id', userId)
                 .eq('is_read', false)
 
+            if (types && types.length > 0) {
+                query = query.in('type', types)
+            } else {
+                // Если типы не указаны, помечаем всё кроме чатов (так как они в другой системе)
+                query = query.neq('type', 'chat_message')
+            }
+
+            const { error } = await query
+
             if (!error) {
-                setUnreadCount(0)
-                toast.success('Все уведомления прочитаны')
+                fetchCount() // Пересчитываем счетчик
+                if (!types) toast.success('Все уведомления прочитаны')
             }
         } catch (err) {
-            console.error('Error marking all as read:', err)
+            console.error('Error marking as read:', err)
         }
-    }, [userId, supabase])
+    }, [userId, supabase, fetchCount])
 
     useEffect(() => {
         if (!userId) return
@@ -73,6 +83,9 @@ export function NotificationProvider({ children, userId }: { children: ReactNode
                     filter: `user_id=eq.${userId}`,
                 },
                 (payload: any) => {
+                    // Игнорируем уведомления о чате, так как для них есть своя система в Navbar
+                    if (payload.new.type === 'chat_message') return
+
                     setUnreadCount((prev) => prev + 1)
 
                     toast(payload.new.title, {

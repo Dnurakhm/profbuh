@@ -1,21 +1,29 @@
 import { createClient } from "@/utils/supabase/server";
 import { notFound, redirect } from "next/navigation";
-import { Star, CheckCircle, MessageSquare, Briefcase, Calendar, User, LogOut, Settings } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
+import { Star, CheckCircle, MessageSquare, Briefcase, Calendar, User, LogOut, Settings, MapPin, Clock, Globe, ShieldCheck } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
+import { ProfileActions } from "./profile-actions";
 
 export const revalidate = 0;
 
 export default async function PublicProfilePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const supabase = await createClient();
-  
+
   // Проверяем, авторизован ли текущий пользователь
   const { data: { user } } = await supabase.auth.getUser();
   const isOwnProfile = user?.id === id;
-  
+
+  // Получаем профиль текущего пользователя (чтобы знать его роль)
+  const { data: currentUserProfile } = user ? await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .single() : { data: null };
+
   // Server action для выхода
   async function signOut() {
     "use server";
@@ -74,7 +82,7 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
   return (
     <div className="max-w-5xl mx-auto py-12 px-4">
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        
+
         {/* ЛЕВАЯ КОЛОНКА: ИНФО */}
         <div className="lg:col-span-1 space-y-6">
           <Card className="border-none shadow-xl bg-gradient-to-b from-blue-600 to-blue-700 text-white overflow-hidden">
@@ -83,10 +91,17 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
                 {profile.full_name?.[0]}
               </div>
               <h1 className="text-2xl font-bold">{profile.full_name}</h1>
-              <p className="text-blue-100 text-sm mt-1">
-                {profile.role === 'accountant' ? profile.specialization : 'Заказчик'}
-              </p>
-              
+              <div className="flex flex-col items-center gap-1 mt-1">
+                <p className="text-blue-100 text-sm font-medium">
+                  {profile.role === 'accountant' ? (profile.specialization || 'Бухгалтер') : 'Заказчик'}
+                </p>
+                {profile.role === 'accountant' && profile.city && (
+                  <div className="flex items-center gap-1 text-[10px] text-blue-200 uppercase tracking-wider font-bold">
+                    <MapPin size={10} /> {profile.city}
+                  </div>
+                )}
+              </div>
+
               <div className="mt-6 flex justify-center gap-4 border-t border-white/10 pt-6">
                 {profile.role === 'accountant' ? (
                   <>
@@ -114,13 +129,23 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
                   </>
                 )}
               </div>
-              
+
               {/* Кнопки для своего профиля */}
               {isOwnProfile && (
                 <div className="mt-6 pt-6 border-t border-white/10 space-y-3">
+                  {profile.role === 'accountant' && (
+                    <Link href="/dashboard/profile/setup">
+                      <Button
+                        className="w-full bg-white text-blue-600 hover:bg-blue-50 border-none font-black shadow-lg shadow-blue-900/20 mb-3"
+                      >
+                        <User className="w-4 h-4 mr-2" />
+                        Редактировать профиль
+                      </Button>
+                    </Link>
+                  )}
                   <Link href="/dashboard">
-                    <Button 
-                      variant="outline" 
+                    <Button
+                      variant="outline"
                       className="w-full bg-white/10 hover:bg-white/20 text-white border-white/20"
                     >
                       <Settings className="w-4 h-4 mr-2" />
@@ -128,9 +153,9 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
                     </Button>
                   </Link>
                   <form action={signOut}>
-                    <Button 
+                    <Button
                       type="submit"
-                      variant="outline" 
+                      variant="outline"
                       className="w-full bg-red-500/20 hover:bg-red-500/30 text-white border-red-300/30"
                     >
                       <LogOut className="w-4 h-4 mr-2" />
@@ -139,20 +164,71 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
                   </form>
                 </div>
               )}
+
+              {/* Кнопки для внешнего пользователя (Заказчика) */}
+              {!isOwnProfile && profile.role === 'accountant' && (
+                <ProfileActions
+                  specialistId={id}
+                  specialistName={profile.full_name || 'Специалист'}
+                  isClient={currentUserProfile?.role === 'client'}
+                />
+              )}
             </CardContent>
           </Card>
 
-          <Card className="border-slate-100 shadow-sm">
-            <CardContent className="p-6 space-y-4">
-              <h3 className="font-bold text-slate-900 flex items-center gap-2 text-sm uppercase tracking-wider">
-                <User className="w-4 h-4 text-blue-600" /> 
-                {profile.role === 'accountant' ? 'О специалисте' : 'О пользователе'}
-              </h3>
-              <p className="text-slate-600 text-sm leading-relaxed">
-                {profile.bio || (profile.role === 'accountant' 
-                  ? "Специалист еще не заполнил информацию о себе." 
-                  : "Пользователь еще не заполнил информацию о себе.")}
-              </p>
+          <Card className="border-slate-100 shadow-sm overflow-hidden">
+            <CardContent className="p-6 space-y-6">
+              <div className="space-y-3">
+                <h3 className="font-bold text-slate-900 flex items-center gap-2 text-[10px] uppercase tracking-wider">
+                  <User className="w-3.5 h-3.5 text-blue-600" />
+                  {profile.role === 'accountant' ? 'О специалисте' : 'О пользователе'}
+                </h3>
+                <p className="text-slate-600 text-sm leading-relaxed">
+                  {profile.bio || (profile.role === 'accountant'
+                    ? "Специалист еще не заполнил информацию о себе."
+                    : "Пользователь еще не заполнил информацию о себе.")}
+                </p>
+              </div>
+
+              {profile.role === 'accountant' && (
+                <>
+                  <div className="h-px bg-slate-100 -mx-6" />
+
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h3 className="font-bold text-slate-900 flex items-center gap-2 text-[10px] uppercase tracking-wider">
+                        <Clock className="w-3.5 h-3.5 text-blue-600" />
+                        Опыт работы
+                      </h3>
+                      <span className="text-sm font-black text-slate-900">{profile.experience_years || 0} лет</span>
+                    </div>
+
+                    <div className="space-y-3">
+                      <h3 className="font-bold text-slate-900 flex items-center gap-2 text-[10px] uppercase tracking-wider">
+                        <Globe className="w-3.5 h-3.5 text-blue-600" />
+                        Языки
+                      </h3>
+                      <div className="flex flex-wrap gap-1.5">
+                        {(profile.languages || ['Русский']).map((lang: string) => (
+                          <Badge key={lang} variant="secondary" className="bg-slate-100 text-slate-600 border-none font-bold text-[10px]">
+                            {lang}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="space-y-3">
+                      <h3 className="font-bold text-slate-900 flex items-center gap-2 text-[10px] uppercase tracking-wider">
+                        <ShieldCheck className="w-3.5 h-3.5 text-blue-600" />
+                        Формат работы
+                      </h3>
+                      <Badge className="bg-blue-50 text-blue-700 border-none font-bold text-[10px]">
+                        {profile.work_format === 'team' ? 'Работа в команде' : 'Работает один'}
+                      </Badge>
+                    </div>
+                  </div>
+                </>
+              )}
             </CardContent>
           </Card>
         </div>
@@ -161,10 +237,71 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
         <div className="lg:col-span-2 space-y-8">
           {profile.role === 'accountant' ? (
             <>
+              {/* Секция Услуг и Цен */}
+              <section className="space-y-4">
+                <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+                  <Briefcase className="h-5 w-5 text-blue-600" />
+                  Услуги и цены
+                </h2>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {profile.services && profile.services.length > 0 ? (
+                    profile.services.map((service: any) => (
+                      <div key={service.name} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex flex-col justify-between">
+                        <span className="font-bold text-slate-800 text-sm leading-tight mb-2">{service.name}</span>
+                        <div className="flex items-end justify-between border-t border-slate-50 pt-2">
+                          <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">от</span>
+                          <span className="text-lg font-black text-blue-600 tracking-tighter">
+                            {service.price_from.toLocaleString('ru-RU')} ₸
+                          </span>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="col-span-full py-8 text-center bg-slate-50/50 rounded-2xl border-2 border-dashed border-slate-100">
+                      <p className="text-slate-400 text-sm italic">Услуги не заполнены</p>
+                    </div>
+                  )}
+                </div>
+              </section>
+
+              {/* Секция Налоговых режимов и Клиентов */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
+                <section>
+                  <h3 className="text-sm font-black text-slate-900 mb-3 uppercase tracking-wider opacity-60">Налоговые режимы</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {profile.tax_regimes && profile.tax_regimes.length > 0 ? (
+                      profile.tax_regimes.map((reg: string) => (
+                        <Badge key={reg} className="bg-white border-slate-200 text-slate-700 font-bold py-1.5 px-3 rounded-xl shadow-sm">
+                          {reg === 'Другое' && profile.tax_regimes_other ? profile.tax_regimes_other : reg}
+                        </Badge>
+                      ))
+                    ) : (
+                      <span className="text-xs text-slate-400 italic">Не указано</span>
+                    )}
+                  </div>
+                </section>
+                <section>
+                  <h3 className="text-sm font-black text-slate-900 mb-3 uppercase tracking-wider opacity-60">С кем работает</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {profile.target_clients && profile.target_clients.length > 0 ? (
+                      profile.target_clients.map((target: string) => (
+                        <Badge key={target} className="bg-blue-600 text-white font-bold py-1.5 px-3 rounded-xl shadow-lg shadow-blue-100">
+                          {target}
+                        </Badge>
+                      ))
+                    ) : (
+                      <span className="text-xs text-slate-400 italic">Не указано</span>
+                    )}
+                  </div>
+                </section>
+              </div>
+
+              <div className="h-px bg-slate-100" />
+
               {/* Секция выполненных работ (только для бухгалтеров) */}
               <section>
                 <h2 className="text-xl font-bold text-slate-900 mb-4 flex items-center gap-2">
-                  <Briefcase className="h-5 w-5 text-blue-600" /> 
+                  <Briefcase className="h-5 w-5 text-blue-600" />
                   Выполненные проекты ({finishedProjects.length})
                 </h2>
                 <div className="grid grid-cols-1 gap-3">
@@ -174,7 +311,7 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
                         <div>
                           <h4 className="font-semibold text-slate-800">{project.title}</h4>
                           <p className="text-xs text-slate-400 mt-1 flex items-center gap-1">
-                            <Calendar className="w-3 h-3" /> 
+                            <Calendar className="w-3 h-3" />
                             Завершен: {new Date(project.created_at).toLocaleDateString('ru-RU')}
                           </p>
                         </div>
@@ -190,7 +327,7 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
               {/* Секция отзывов (только для бухгалтеров) */}
               <section>
                 <h2 className="text-xl font-bold text-slate-900 mb-4 flex items-center gap-2">
-                  <MessageSquare className="h-5 w-5 text-blue-600" /> 
+                  <MessageSquare className="h-5 w-5 text-blue-600" />
                   Отзывы клиентов
                 </h2>
                 <div className="space-y-4">
@@ -227,30 +364,30 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
             /* Секция созданных заказов (для заказчиков) */
             <section>
               <h2 className="text-xl font-bold text-slate-900 mb-4 flex items-center gap-2">
-                <Briefcase className="h-5 w-5 text-blue-600" /> 
+                <Briefcase className="h-5 w-5 text-blue-600" />
                 Мои заказы ({createdJobs.length})
               </h2>
               <div className="grid grid-cols-1 gap-3">
                 {createdJobs.length > 0 ? (
                   createdJobs.map((job: any) => (
-                    <Link 
-                      key={job.id} 
+                    <Link
+                      key={job.id}
                       href={`/jobs/${job.id}`}
                       className="bg-white p-4 rounded-xl border border-slate-100 flex justify-between items-center shadow-sm hover:shadow-md transition-shadow"
                     >
                       <div>
                         <h4 className="font-semibold text-slate-800">{job.title}</h4>
                         <p className="text-xs text-slate-400 mt-1 flex items-center gap-1">
-                          <Calendar className="w-3 h-3" /> 
+                          <Calendar className="w-3 h-3" />
                           Создан: {new Date(job.created_at).toLocaleDateString('ru-RU')}
                         </p>
                       </div>
                       <Badge className={
-                        job.status === 'completed' 
-                          ? 'bg-green-50 text-green-700 border-green-100' 
-                          : job.accountant_id 
-                          ? 'bg-blue-50 text-blue-700 border-blue-100' 
-                          : 'bg-slate-50 text-slate-700 border-slate-100'
+                        job.status === 'completed'
+                          ? 'bg-green-50 text-green-700 border-green-100'
+                          : job.accountant_id
+                            ? 'bg-blue-50 text-blue-700 border-blue-100'
+                            : 'bg-slate-50 text-slate-700 border-slate-100'
                       }>
                         {job.status === 'completed' ? 'Завершен' : job.accountant_id ? 'В работе' : 'Ожидает'}
                       </Badge>

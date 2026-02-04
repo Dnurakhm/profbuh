@@ -48,9 +48,6 @@ export default async function JobDetailsPage({ params }: { params: Promise<{ id:
 
   return (
     <div className="container max-w-6xl mx-auto py-8 px-4">
-      {/* ... (header and other stuff remains same) ... */}
-// ... this is tricky because I need to replace parts of the file while keeping others.
-      // I'll use replace_file_content with a larger block to ensure context.
 
       <Link
         href="/jobs"

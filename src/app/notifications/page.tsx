@@ -13,6 +13,7 @@ import { NotificationSkeleton } from '@/components/ui/skeletons'
 export default function NotificationsPage() {
   const [notifications, setNotifications] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [filter, setFilter] = useState<'all' | 'jobs' | 'system'>('all')
   const supabase = useMemo(() => createClient(), [])
   const router = useRouter()
   const { markAllAsRead: globalMarkAll, fetchCount, userId: currentUserId } = useNotifications()
@@ -20,13 +21,22 @@ export default function NotificationsPage() {
 
   // Группировка уведомлений по дате
   const groupedNotifications = useMemo(() => {
+    // Сначала фильтруем по типу
+    let filtered = notifications.filter(n => n.type !== 'chat_message')
+
+    if (filter === 'jobs') {
+      filtered = filtered.filter(n => ['new_bid', 'job_assigned', 'proposal_accepted'].includes(n.type))
+    } else if (filter === 'system') {
+      filtered = filtered.filter(n => ['system', 'billing'].includes(n.type) || !n.type)
+    }
+
     const groups: { [key: string]: any[] } = {
       'Сегодня': [],
       'Вчера': [],
       'Ранее': []
     }
 
-    notifications.forEach(n => {
+    filtered.forEach(n => {
       const date = new Date(n.created_at)
       if (isToday(date)) groups['Сегодня'].push(n)
       else if (isYesterday(date)) groups['Вчера'].push(n)
@@ -34,21 +44,34 @@ export default function NotificationsPage() {
     })
 
     return groups
-  }, [notifications])
+  }, [notifications, filter])
 
   const handleMarkAllAsRead = async () => {
-    await globalMarkAll()
-    setNotifications(prev => prev.map(n => ({ ...n, is_read: true })))
+    let types: string[] | undefined = undefined
+    if (filter === 'jobs') {
+      types = ['new_bid', 'job_assigned', 'proposal_accepted']
+    } else if (filter === 'system') {
+      types = ['system', 'billing']
+    }
+
+    await globalMarkAll(types)
+    setNotifications(prev => prev.map(n => {
+      if (!types || types.includes(n.type)) {
+        return { ...n, is_read: true }
+      }
+      return n
+    }))
   }
 
   // Функция для получения иконок в зависимости от типа
   const getIcon = (type: string, isRead: boolean) => {
     const className = isRead ? "text-slate-400" : "text-white"
     switch (type) {
-      case 'chat_message': return <MessageSquare size={20} className={className} />
-      case 'new_bid': return <UserPlus size={20} className={className} />
-      case 'job_assigned': return <CheckCircle size={20} className={className} />
-      default: return <Bell size={20} className={className} />
+      case 'chat_message': return <MessageSquare size={18} className={className} />
+      case 'new_bid': return <UserPlus size={18} className={className} />
+      case 'job_assigned': return <CheckCircle size={18} className={className} />
+      case 'billing': return <Clock size={18} className={className} />
+      default: return <Bell size={18} className={className} />
     }
   }
 
@@ -87,6 +110,7 @@ export default function NotificationsPage() {
           .from('notifications')
           .select('*')
           .eq('user_id', currentUserId)
+          .neq('type', 'chat_message') // Исключаем чаты
           .order('created_at', { ascending: false })
           .limit(50)
 
@@ -112,6 +136,8 @@ export default function NotificationsPage() {
             filter: `user_id=eq.${currentUserId}`,
           },
           (payload: any) => {
+            if (payload.new.type === 'chat_message') return // Игнорируем чаты
+
             if (payload.eventType === 'INSERT') {
               setNotifications(prev => [payload.new as any, ...prev])
             } else if (payload.eventType === 'UPDATE') {
@@ -147,32 +173,60 @@ export default function NotificationsPage() {
   const hasUnread = notifications.some(n => !n.is_read)
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-10 pb-20">
+    <div className="max-w-3xl mx-auto px-4 py-4 sm:py-10 pb-20 overflow-x-hidden">
       {/* Заголовок */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-10">
-        <h1 className="text-4xl font-black text-slate-900 flex items-center gap-4">
-          <div className="w-14 h-14 bg-blue-600 rounded-[1.25rem] flex items-center justify-center shadow-2xl shadow-blue-200 text-white rotate-3">
-            <Bell size={28} fill="currentColor" />
-          </div>
-          Уведомления
-        </h1>
+      <div className="flex flex-col gap-6 mb-6 sm:mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 flex items-center gap-3">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-600 rounded-[1.25rem] flex items-center justify-center shadow-xl shadow-blue-200 text-white shrink-0">
+              <Bell size={20} className="sm:w-[24px] sm:h-[24px]" fill="currentColor" />
+            </div>
+            <span className="truncate">Уведомления</span>
+          </h1>
 
-        {hasUnread && (
-          <Button
-            variant="ghost"
-            onClick={handleMarkAllAsRead}
-            className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 font-bold gap-2 rounded-xl"
+          {hasUnread && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleMarkAllAsRead}
+              className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 font-bold gap-1.5 rounded-xl text-xs w-full sm:w-auto justify-center shrink-0"
+            >
+              <CheckCheck size={16} />
+              Прочитать всё
+            </Button>
+          )}
+        </div>
+
+        {/* Фильтры */}
+        <div className="flex items-center gap-1 p-1 bg-slate-100 rounded-2xl overflow-x-auto no-scrollbar scroll-smooth w-full sm:w-fit">
+          <button
+            onClick={() => setFilter('all')}
+            className={`px-4 py-2 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-wider transition-all whitespace-nowrap flex-1 sm:flex-none ${filter === 'all' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'
+              }`}
           >
-            <CheckCheck size={20} />
-            Пометить всё как прочитанное
-          </Button>
-        )}
+            Все
+          </button>
+          <button
+            onClick={() => setFilter('jobs')}
+            className={`px-4 py-2 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-wider transition-all whitespace-nowrap flex-1 sm:flex-none ${filter === 'jobs' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'
+              }`}
+          >
+            Заказы
+          </button>
+          <button
+            onClick={() => setFilter('system')}
+            className={`px-4 py-2 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-wider transition-all whitespace-nowrap flex-1 sm:flex-none ${filter === 'system' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'
+              }`}
+          >
+            Система
+          </button>
+        </div>
       </div>
 
       {/* Список */}
-      <div className="space-y-8">
-        {notifications.length === 0 ? (
-          <div className="bg-white rounded-[2.5rem] p-12 sm:p-20 text-center border border-slate-100 shadow-sm transition-all">
+      <div className="space-y-6 w-full overflow-hidden">
+        {Object.keys(groupedNotifications).every(k => groupedNotifications[k].length === 0) ? (
+          <div className="bg-white rounded-[2rem] p-12 sm:p-20 text-center border border-slate-100 shadow-sm transition-all w-full">
             <div className="w-16 h-16 sm:w-20 sm:h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-6">
               <Bell size={32} className="text-slate-200" />
             </div>
@@ -183,62 +237,56 @@ export default function NotificationsPage() {
           Object.entries(groupedNotifications).map(([group, items]) => {
             if (items.length === 0) return null;
             return (
-              <div key={group} className="space-y-4">
-                <h2 className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">{group}</h2>
-                <div className="grid gap-3">
+              <div key={group} className="space-y-3 w-full">
+                <h2 className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2 sm:px-4">{group}</h2>
+                <div className="grid gap-2 w-full">
                   {items.map((n) => (
                     <div
                       key={n.id}
                       onClick={() => markAsRead(n.id, n.link || '#', n.is_read)}
-                      className={`group block relative p-4 sm:p-5 rounded-[1.5rem] sm:rounded-[2rem] border transition-all duration-300 cursor-pointer ${n.is_read
-                        ? 'bg-white/50 border-slate-100 opacity-70 grayscale-[0.5]'
-                        : 'bg-white border-blue-100 shadow-xl shadow-blue-50/50 ring-1 ring-blue-50'
-                        } hover:scale-[1.01] active:scale-[0.99]`}
+                      className={`group block relative p-3 sm:p-4 rounded-[1.5rem] sm:rounded-3xl border transition-all duration-200 cursor-pointer w-full overflow-hidden ${n.is_read
+                          ? 'bg-transparent border-transparent opacity-60 grayscale-[0.8] hover:opacity-100 hover:grayscale-0 hover:bg-white/50'
+                          : 'bg-white border-blue-50 shadow-lg shadow-blue-100/20 ring-1 ring-blue-50'
+                        } active:scale-[0.98]`}
                     >
-                      <div className="flex flex-col sm:flex-row gap-4 sm:gap-5 items-start sm:items-center">
+                      <div className="flex gap-3 sm:gap-4 items-center w-full min-w-0">
                         {/* Иконка */}
-                        <div className="flex items-center justify-between w-full sm:w-auto">
-                          <div className={`w-12 h-12 sm:w-14 sm:h-14 shrink-0 rounded-[1.25rem] flex items-center justify-center transition-all duration-500 ${n.is_read ? 'bg-slate-100' : 'bg-blue-600 shadow-lg shadow-blue-200 group-hover:rotate-6'
-                            }`}>
-                            {getIcon(n.type, n.is_read)}
-                          </div>
-
-                          <div className="sm:hidden flex items-center gap-1.5 text-[10px] font-black text-slate-400 bg-slate-50 px-2 py-1 rounded-lg uppercase tracking-wider">
-                            {format(new Date(n.created_at), 'HH:mm')}
-                          </div>
+                        <div className={`w-10 h-10 sm:w-12 sm:h-12 shrink-0 rounded-xl sm:rounded-2xl flex items-center justify-center transition-all ${n.is_read ? 'bg-slate-100' : 'bg-blue-600 shadow-lg shadow-blue-200'
+                          }`}>
+                          {getIcon(n.type, n.is_read)}
                         </div>
 
                         <div className="flex-1 min-w-0">
-                          <div className="flex justify-between items-start mb-1 gap-2">
-                            <h3 className={`transition-all duration-300 truncate leading-tight ${n.is_read ? 'text-slate-700 font-bold text-sm sm:text-base' : 'text-slate-900 font-black text-base sm:text-lg tracking-tight'
+                          <div className="flex justify-between items-start mb-0.5 w-full">
+                            <h3 className={`truncate leading-tight flex-1 pr-2 ${n.is_read ? 'text-slate-700 font-bold text-sm' : 'text-slate-900 font-black text-sm sm:text-base tracking-tight'
                               }`}>
                               {n.title}
-                              {n.notification_count > 1 && (
-                                <span className="ml-2 text-[10px] sm:text-sm text-blue-600 font-black px-2 py-0.5 bg-blue-50 rounded-lg">
-                                  +{n.notification_count - 1}
-                                </span>
-                              )}
                             </h3>
-                            <div className="hidden sm:flex items-center gap-1.5 text-[10px] font-black text-slate-400 bg-slate-50 px-2 py-1 rounded-lg uppercase tracking-wider">
-                              {format(new Date(n.created_at), 'HH:mm')}
-                            </div>
+                            {!n.is_read && (
+                              <div className="w-2 h-2 rounded-full bg-blue-600 shrink-0 shadow-sm mt-1 sm:mt-1.5" />
+                            )}
                           </div>
 
-                          <p className={`text-xs sm:text-sm leading-relaxed transition-all duration-300 line-clamp-2 ${n.is_read ? 'text-slate-500 font-medium' : 'text-slate-700 font-bold'
-                            }`}>
-                            {n.content}
-                          </p>
+                          <div className="flex justify-between items-end w-full">
+                            <p className={`text-[11px] sm:text-xs leading-relaxed truncate flex-1 pr-2 ${n.is_read ? 'text-slate-500 font-medium' : 'text-slate-600 font-bold'
+                              }`}>
+                              {n.content}
+                            </p>
+                            <span className="text-[9px] sm:text-[10px] font-black text-slate-400 shrink-0 uppercase tracking-tighter sm:tracking-normal">
+                              {format(new Date(n.created_at), 'HH:mm')}
+                            </span>
+                          </div>
                         </div>
 
-                        <div className="hidden sm:block ml-2 text-slate-300 group-hover:text-blue-600 transition-colors">
-                          <ChevronRight size={24} />
+                        <div className="hidden sm:block ml-1 text-slate-300 group-hover:text-blue-600 transition-colors shrink-0">
+                          <ChevronRight size={18} />
                         </div>
                       </div>
                     </div>
                   ))}
                 </div>
               </div>
-            )
+            );
           })
         )}
       </div>

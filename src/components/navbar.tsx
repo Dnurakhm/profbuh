@@ -15,7 +15,9 @@ import {
   UserCircle,
   Search,
   Repeat,
-  FileText
+  FileText,
+  MessageSquare,
+  LogOut
 } from 'lucide-react'
 import Notifications from './notifications'
 
@@ -23,6 +25,7 @@ export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false)
   const [user, setUser] = useState<any>(null)
   const [profile, setProfile] = useState<any>(null)
+  const [totalUnreadCount, setTotalUnreadCount] = useState(0)
   const [mounted, setMounted] = useState(false)
   const pathname = usePathname()
   const supabase = createClient()
@@ -63,6 +66,57 @@ export default function Navbar() {
     return () => subscription.unsubscribe()
   }, [])
 
+  // Получение общего количества непрочитанных сообщений
+  useEffect(() => {
+    if (!user) return
+
+    const fetchUnreadCount = async () => {
+      const { count } = await supabase
+        .from('messages')
+        .select('id, jobs!inner(status)', { count: 'exact', head: true })
+        .eq('jobs.status', 'in_progress')
+        .neq('sender_id', user.id)
+        .eq('is_read', false)
+
+      setTotalUnreadCount(count || 0)
+    }
+
+    fetchUnreadCount()
+
+    // Подписка на новые сообщения для обновления счетчика
+    const channel = supabase
+      .channel('navbar-unread-updates')
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'messages'
+      }, (payload) => {
+        if (payload.new.sender_id !== user.id) {
+          setTotalUnreadCount(prev => prev + 1)
+        }
+      })
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'messages'
+      }, (payload) => {
+        // Если сообщение помечено как прочитанное нами
+        if (payload.new.is_read && payload.old.is_read === false && payload.new.sender_id !== user.id) {
+          setTotalUnreadCount(prev => Math.max(0, prev - 1))
+        }
+      })
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [user])
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut()
+    router.push('/')
+  }
+
   const getLinks = () => {
     if (!user) return []
 
@@ -72,6 +126,7 @@ export default function Navbar() {
         { name: 'Найти работу', href: '/jobs', icon: Search },
         { name: 'Мои отклики', href: '/dashboard/proposals', icon: FileText },
         { name: 'Активные контракты', href: '/dashboard/contracts', icon: Briefcase },
+        { name: 'Чаты', href: '/dashboard/chat', icon: MessageSquare, badge: totalUnreadCount },
       ]
     }
 
@@ -80,6 +135,7 @@ export default function Navbar() {
       { name: 'Мои заказы', href: '/dashboard/my-jobs', icon: LayoutDashboard },
       { name: 'Создать заказ', href: '/dashboard/my-jobs/new', icon: PlusCircle },
       { name: 'Специалисты', href: '/specialists', icon: UserCircle },
+      { name: 'Чаты', href: '/dashboard/chat', icon: MessageSquare, badge: totalUnreadCount },
     ]
   }
 
@@ -133,6 +189,11 @@ export default function Navbar() {
                 >
                   <link.icon className="w-4 h-4" />
                   {link.name}
+                  {link.badge && link.badge > 0 && (
+                    <span className="ml-1.5 flex h-4 min-w-[16px] px-1 items-center justify-center rounded-full bg-red-500 text-[10px] font-black text-white shadow-sm ring-2 ring-white">
+                      {link.badge}
+                    </span>
+                  )}
                 </Link>
               ))}
             </div>
@@ -176,18 +237,20 @@ export default function Navbar() {
                     </div>
                   </div>
                 </Link>
+
+                <div className="h-6 w-px bg-slate-200 hidden md:block" />
+
+                <button
+                  onClick={handleLogout}
+                  className="hidden md:flex items-center gap-2 px-3 py-2 rounded-xl text-slate-500 hover:text-red-600 hover:bg-red-50 transition-all duration-200 group"
+                  title="Выйти"
+                >
+                  <LogOut className="w-5 h-5 group-hover:scale-110 transition-transform" />
+                  <span className="text-sm font-bold">Выйти</span>
+                </button>
               </>
             ) : (
-              <div className="flex items-center gap-3">
-                <Link href="/login" className="hidden md:block text-slate-600 font-bold text-sm hover:text-slate-900">
-                  Войти
-                </Link>
-                <Link href="/login">
-                  <Button className="rounded-xl px-5 font-bold shadow-lg shadow-blue-200 hover:shadow-blue-300 transition-all">
-                    Начать работу
-                  </Button>
-                </Link>
-              </div>
+              <></>
             )}
 
             {/* Mobile menu button */}
@@ -233,8 +296,15 @@ export default function Navbar() {
                 : 'text-slate-600'
                 }`}
             >
-              <link.icon className="w-6 h-6" />
-              {link.name}
+              <div className="flex items-center gap-4 flex-1">
+                <link.icon className="w-6 h-6" />
+                {link.name}
+              </div>
+              {link.badge && link.badge > 0 && (
+                <span className="flex h-6 min-w-[24px] px-2 items-center justify-center rounded-full bg-red-500 text-xs font-black text-white shadow-lg shadow-red-200">
+                  {link.badge}
+                </span>
+              )}
             </Link>
           ))}
           {user && (
@@ -255,6 +325,18 @@ export default function Navbar() {
             >
               Войти / Регистрация
             </Link>
+          )}
+
+          {user && (
+            <div className="pt-4 border-t border-slate-100">
+              <button
+                onClick={handleLogout}
+                className="flex items-center gap-4 w-full px-4 py-4 rounded-2xl text-base font-bold text-red-600 hover:bg-red-50 transition-all active:scale-95"
+              >
+                <LogOut className="w-6 h-6" />
+                Выйти из аккаунта
+              </button>
+            </div>
           )}
         </div>
       )}

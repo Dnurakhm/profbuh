@@ -37,10 +37,10 @@ export function SpecialistDashboardView({ profile, stats }: { profile: any, stat
                 />
                 <DashboardStat
                     title="Рейтинг"
-                    value="New"
+                    value={profile?.rating_avg ? profile.rating_avg.toFixed(1) : "0.0"}
                     icon={Star}
                     color="amber"
-                    link="/profile"
+                    link={`/profile/${profile?.id}`}
                 />
                 <DashboardStat
                     title="Заработано (мес)"
@@ -122,9 +122,11 @@ export function SpecialistDashboardView({ profile, stats }: { profile: any, stat
                             <div className="h-full bg-blue-500 w-[10%]" />
                         </div>
                         <p className="text-xs text-slate-400">Заполните профиль на 100%, чтобы получать больше заказов.</p>
-                        <Button variant="secondary" className="w-full bg-white/10 hover:bg-white/20 text-white border-0">
-                            Редактировать
-                        </Button>
+                        <Link href="/dashboard/profile/setup">
+                            <Button variant="secondary" className="w-full bg-white/10 hover:bg-white/20 text-white border-0">
+                                Редактировать
+                            </Button>
+                        </Link>
                     </CardContent>
                 </Card>
             </div>

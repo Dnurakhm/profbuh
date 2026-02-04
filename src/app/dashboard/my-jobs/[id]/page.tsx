@@ -12,13 +12,13 @@ import {
   Star,
   MapPin,
   Briefcase,
-  Calendar
+  Calendar,
+  MessageSquare
 } from "lucide-react";
 import Link from "next/link";
 import BidItem from "./bid-item";
 import CompleteJobButton from "./complete-button";
 import ReviewForm from "./review-form";
-import Chat from "@/components/chat";
 
 export const revalidate = 0;
 
@@ -180,15 +180,19 @@ export default async function JobBidsPage({
 
                   {job.status === 'in_progress' && (
                     <div className="space-y-6">
-                      <div className="bg-slate-50 rounded-2xl p-6 border border-slate-100">
-                        <div className="flex items-center justify-between mb-4">
-                          <h4 className="font-bold text-slate-800 flex items-center gap-2">
-                            <div className="w-2 h-2 bg-green-500 rounded-full" />
-                            Чат с исполнителем
-                          </h4>
-                          <span className="text-xs font-bold text-slate-400 uppercase">Online</span>
+                      <div className="bg-blue-50/50 rounded-2xl p-8 border border-blue-100 flex flex-col items-center text-center">
+                        <div className="w-16 h-16 bg-blue-600 rounded-[1.5rem] flex items-center justify-center text-white mb-4 shadow-xl shadow-blue-200">
+                          <MessageSquare className="w-8 h-8" />
                         </div>
-                        <Chat jobId={job.id} userId={user?.id || ""} />
+                        <h4 className="text-xl font-black text-slate-900 mb-2">Обсуждение проекта</h4>
+                        <p className="text-slate-500 text-sm max-w-sm mb-6">
+                          Используйте наш обновленный мессенджер для безопасного общения и обмена файлами.
+                        </p>
+                        <Button asChild className="rounded-2xl h-14 px-8 font-black text-base shadow-xl shadow-blue-200 transition-all hover:scale-[1.02] active:scale-95">
+                          <Link href={`/dashboard/chat?jobId=${job.id}`}>
+                            Открыть чат по заказу
+                          </Link>
+                        </Button>
                       </div>
 
                       <div className="flex justify-end pt-4 border-t border-slate-100">
