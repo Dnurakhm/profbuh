@@ -90,7 +90,7 @@ export default function Navbar() {
         event: 'INSERT',
         schema: 'public',
         table: 'messages'
-      }, (payload) => {
+      }, (payload: any) => {
         if (payload.new.sender_id !== user.id) {
           setTotalUnreadCount(prev => prev + 1)
         }
@@ -99,7 +99,7 @@ export default function Navbar() {
         event: 'UPDATE',
         schema: 'public',
         table: 'messages'
-      }, (payload) => {
+      }, (payload: any) => {
         // Если сообщение помечено как прочитанное нами
         if (payload.new.is_read && payload.old.is_read === false && payload.new.sender_id !== user.id) {
           setTotalUnreadCount(prev => Math.max(0, prev - 1))
